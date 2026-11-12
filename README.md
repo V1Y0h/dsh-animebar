@@ -27,7 +27,7 @@ Response shape:
 
 ```sh
 # straight from this repository
-dsh plugin --profile desktop add github:<your-username>/dsh-animebar
+dsh plugin --profile desktop add github:V1Y0h/dsh-animebar
 ```
 
 Or point **Plugins → Add plugin** at a local checkout. Restart DeepSeek Harness afterwards so the tool registers.
@@ -91,7 +91,7 @@ MIT. The icon is the author's own artwork.
 
 ```sh
 # 直接从仓库装
-dsh plugin --profile desktop add github:<你的用户名>/dsh-animebar
+dsh plugin --profile desktop add github:V1Y0h/dsh-animebar
 ```
 
 也可以把本地目录加进 **设置 → 插件**。安装后重启 DeepSeek Harness，工具才会注册。
