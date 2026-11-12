@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "AnimeBar",
+    "description": "Shows today's anime lineup from Bangumi and returns it as a ranked list.",
+    "detail": "docs/DETAIL.md"
+  }
+}

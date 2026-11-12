@@ -1,0 +1,4 @@
+- insert:
+    - id: animebar
+      name: dsh-animebar
+      config: {}

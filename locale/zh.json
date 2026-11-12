@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "AnimeBar 番表",
+    "description": "从 Bangumi 取当天在播的番剧，按评分排好交给你。",
+    "detail": "docs/DETAIL.md"
+  }
+}
