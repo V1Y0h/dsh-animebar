@@ -223,6 +223,7 @@ window.__ModuleLoader__.load({
       const [sortKey, setSortKey] = useState('pop');
       const [kw, setKw] = useState('');
       const [toast, setToast] = useState('');
+      const [scoreMap, setScoreMap] = useState({});
       const [notes, setNotes] = useState(loadNotes);
       const [draft, setDraft] = useState({ title: '', phenomena: [], speculations: [], evidence: '', reflection: '', dims: {} });
 
@@ -464,16 +465,15 @@ window.__ModuleLoader__.load({
                             : null,
                         ),
                         h('p', { style: S.title }, titleText(it)),
-                        h('span', { style: S.score }, it.score ? ('BGM ' + it.score.toFixed(1)) : 'BGM —'),
+                        h('span', { style: S.score }, scoreMap[it.id] || ('BGM ' + (it.score ? it.score.toFixed(1) : '—'))),
                       ),
                       h('button', {
                         type: 'button',
                         style: S.act,
                         title: t('多方评分（Bangumi / AniList / Kitsu）', 'Scores (Bangumi / AniList / Kitsu)', '評価（Bangumi / AniList / Kitsu）'),
                         onClick: async () => {
-                          setToast(t('查分中…', 'Looking up scores…', 'スコア取得中…'));
                           const r = await multiScore(it);
-                          setToast(r);
+                          setScoreMap((m) => Object.assign({}, m, { [it.id]: r }));
                         },
                       }, t('评分', 'Scores', '評価')),
                       h('button', {
