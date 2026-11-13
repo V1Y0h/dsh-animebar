@@ -1,82 +1,8 @@
 # dsh-animebar
 
-Anime airing board for [DeepSeek Harness](https://github.com/deepseek-ai) — ask what is airing, get a ranked list.
+给 DeepSeek Harness 的看番工具：问一句「今天有什么番」，得到按评分排好的清单。
 
-[English](#english) · [中文](#中文)
-
----
-
-## English
-
-### What it does
-
-Registers one tool, `anime_today`. It reads the public [Bangumi](https://bgm.tv) broadcast calendar and returns the titles airing on a weekday, filtered by rating and sorted by score.
-
-```
-what anime airs on Sunday
-今天有什么番
-```
-
-Ask for theatrical films instead of the weekly schedule:
-
-```
-最近有什么剧场版动画
-```
-
-Response shape:
-
-```json
-{ "weekday": 5, "total": 6, "items": [{ "title": "…", "score": 7.6, "url": "…" }] }
-```
-
-### Install
-
-```sh
-# straight from this repository
-dsh plugin --profile desktop add github:V1Y0h/dsh-animebar
-```
-
-Or point **Plugins → Add plugin** at a local checkout. Restart DeepSeek Harness afterwards so the tool registers.
-
-An npm release is planned; once published, `dsh plugin --profile desktop add dsh-animebar` will work too.
-
-### Platform
-
-The plugin is plain host-side JavaScript with no native code, so it runs wherever DeepSeek Harness runs — macOS, Linux, or Windows. It needs network access to Bangumi; nothing else.
-
-### Modes
-
-`kind: "tv"` (default) reads the weekly broadcast calendar. `kind: "movie"` searches theatrical films and ranks them by rating.
-
-### Configuration
-
-The bundle row accepts `config`:
-
-| key | default | meaning |
-| --- | --- | --- |
-| `minScore` | `0` | skip titles rated below this; 0 keeps everything, including unrated |
-| `limit` | `8` | maximum titles returned |
-
-### Data and privacy
-
-The plugin calls `https://api.bgm.tv/calendar` at request time. It stores nothing, caches nothing, and ships no artwork or episode content. Only the titles you query leave your machine.
-
-### Limitations
-
-- Covers only what Bangumi indexes; niche and independent animation is often missing.
-- Scores from very few ratings are unreliable.
-- No playback. Pair it with whatever player you already use.
-
-### Notes for plugin authors
-
-Two things cost time when building this, and neither is obvious:
-
-1. A locally linked bundle still needs its own `pnpm add <dependency>` inside the package directory. Declaring the dependency in `package.json` is not enough, because pnpm links the directory instead of installing it.
-2. `defineTool` requires `output: { schema, render }`. Miss either and activation fails with `Cannot read properties of undefined (reading 'render')`.
-
-### License
-
-MIT. The icon is the author's own artwork.
+[中文](#中文) · [English](#english)
 
 ---
 
@@ -84,12 +10,18 @@ MIT. The icon is the author's own artwork.
 
 ### 它做什么
 
-给 DeepSeek Harness 注册一个工具 `anime_today`：读取 [Bangumi](https://bgm.tv) 的公开放送表，返回某一天在播的作品，按评分过滤并排序。
+注册一个工具 `anime_today`，读 [Bangumi](https://bgm.tv) 的公开放送表，返回某一天在播的作品，含低分和没评分的，按分数排序。
 
 ```
 今天有什么番
 周三有哪些番在播
+最近有什么剧场版动画
 ```
+
+`kind` 支持两种模式：
+
+- `tv`（默认）— 每周放送表
+- `movie` — 剧场版，翻页抓取后按评分排序
 
 返回结构：
 
@@ -101,7 +33,7 @@ MIT. The icon is the author's own artwork.
 
 ```sh
 # 直接从仓库装
-dsh plugin --profile desktop add github:V1Y0h/dsh-animebar
+dsh plugin --profile desktop add github:V1Y0h/animebar-plugin
 ```
 
 也可以把本地目录加进 **设置 → 插件**。安装后重启 DeepSeek Harness，工具才会注册。
@@ -123,7 +55,7 @@ bundle 那一行支持 `config`：
 
 ### 数据与隐私
 
-插件在请求时调用 `https://api.bgm.tv/calendar`，不存任何东西、不做缓存、不分发任何番剧画面或内容。离开你机器的只有你查询的番名。
+插件在请求时调用 `api.bgm.tv`，不存任何东西、不做缓存、不分发任何番剧画面或内容。离开你机器的只有你查询的番名。
 
 ### 限制
 
@@ -141,3 +73,41 @@ bundle 那一行支持 `config`：
 ### 许可
 
 MIT。图标是作者本人绘制。
+
+---
+
+## English
+
+Registers one tool, `anime_today`, which reads the public [Bangumi](https://bgm.tv) broadcast calendar and returns the titles airing on a weekday, filtered by rating and sorted by score.
+
+### Install
+
+```sh
+dsh plugin --profile desktop add github:V1Y0h/animebar-plugin
+```
+
+Or point **Plugins → Add plugin** at a local checkout. Restart DeepSeek Harness afterwards so the tool registers.
+
+### Modes
+
+`kind: "tv"` (default) reads the weekly broadcast calendar. `kind: "movie"` searches theatrical films and ranks them by rating.
+
+### Configuration
+
+| key | default | meaning |
+| --- | --- | --- |
+| `minScore` | `0` | skip titles rated below this; 0 keeps everything, including unrated |
+| `limit` | `8` | maximum titles returned |
+
+### Data and privacy
+
+The plugin calls `api.bgm.tv` at request time. It stores nothing, caches nothing, and ships no artwork or episode content.
+
+### Notes for plugin authors
+
+1. A locally linked bundle still needs its own `pnpm add <dependency>` inside the package directory.
+2. `defineTool` requires `output: { schema, render }`.
+
+### License
+
+MIT. The icon is the author's own artwork.
