@@ -6,6 +6,22 @@ export const inject = ["tools"];
 const CALENDAR = "https://api.bgm.tv/calendar";
 const UA = "dsh-animebar/0.1 (+https://github.com/)";
 
+async function fetchMovies() {
+  const res = await fetch("https://api.bgm.tv/v0/search/subjects?limit=40", {
+    method: "POST",
+    headers: { "user-agent": UA, "content-type": "application/json" },
+    body: JSON.stringify({ keyword: "劇場版", filter: { type: [2] }, sort: "heat" }),
+  });
+  if (!res.ok) throw new Error(`Bangumi search returned ${res.status}`);
+  const data = await res.json();
+  return (data.data ?? []).map((item) => ({
+    title: item.name_cn || item.name,
+    score: item.rating?.score ?? 0,
+    date: item.date ?? "",
+    url: `https://bgm.tv/subject/${item.id}`,
+  }));
+}
+
 async function fetchCalendar() {
   const res = await fetch(CALENDAR, { headers: { "user-agent": UA, accept: "application/json" } });
   if (!res.ok) throw new Error(`Bangumi API returned ${res.status}`);
@@ -22,7 +38,12 @@ export function apply(ctx, config) {
     parameters: {
       weekday: {
         type: "number",
-        description: "ISO weekday, 1 = Monday through 7 = Sunday. Defaults to today.",
+        description: "ISO weekday, 1 = Monday through 7 = Sunday. Defaults to today. Ignored when kind is movie.",
+      },
+      kind: {
+        type: "string",
+        enum: ["tv", "movie"],
+        description: "tv lists the weekly broadcast schedule; movie lists theatrical films sorted by rating.",
       },
     },
     output: {
@@ -30,6 +51,13 @@ export function apply(ctx, config) {
       render: (_args, value) => [{ type: "text", text: JSON.stringify(value) }],
     },
     async execute(args) {
+      if (args?.kind === "movie") {
+        const films = (await fetchMovies())
+          .filter((f) => f.score >= minScore)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, limit);
+        return { kind: "movie", total: films.length, items: films };
+      }
       const data = await fetchCalendar();
       const weekday = Number(args?.weekday) || new Date().getDay() || 7;
       const items = data

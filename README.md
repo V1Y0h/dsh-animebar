@@ -17,6 +17,12 @@ what anime airs on Sunday
 今天有什么番
 ```
 
+Ask for theatrical films instead of the weekly schedule:
+
+```
+最近有什么剧场版动画
+```
+
 Response shape:
 
 ```json
@@ -37,6 +43,10 @@ An npm release is planned; once published, `dsh plugin --profile desktop add dsh
 ### Platform
 
 The plugin is plain host-side JavaScript with no native code, so it runs wherever DeepSeek Harness runs — macOS, Linux, or Windows. It needs network access to Bangumi; nothing else.
+
+### Modes
+
+`kind: "tv"` (default) reads the weekly broadcast calendar. `kind: "movie"` searches theatrical films and ranks them by rating.
 
 ### Configuration
 
