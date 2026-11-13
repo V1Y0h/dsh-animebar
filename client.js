@@ -204,6 +204,16 @@ window.__ModuleLoader__.load({
       const [lang, setLang] = useState(() => { try { return localStorage.getItem('animebar.panel.lang') || 'zh'; } catch (e) { return 'zh'; } });
       const t = (zh, en, ja) => (lang === 'ja' ? (ja || en) : lang === 'en' ? en : zh);
       const ttag = (zh) => { const p = TAG[zh]; return p ? (lang === 'ja' ? p[1] : lang === 'en' ? p[0] : zh) : zh; };
+      const detailHref = (it) => {
+        if (lang === 'en') return 'https://myanimelist.net/anime.php?q=' + encodeURIComponent(it.orig || it.title);
+        if (lang === 'ja') return 'https://www.google.com/search?q=' + encodeURIComponent((it.orig || it.title) + ' アニメ');
+        return it.url;
+      };
+      const watchHref = (it) => {
+        if (lang === 'en') return 'https://www.justwatch.com/us/search?q=' + encodeURIComponent(it.orig || it.title);
+        if (lang === 'ja') return 'https://www.justwatch.com/jp/search?q=' + encodeURIComponent(it.orig || it.title);
+        return 'animebar://anich?title=' + encodeURIComponent(it.title);
+      };
       const titleText = (it) => {
         if (lang === 'ja') return it.orig || it.title;
         if (lang === 'en') {
@@ -267,7 +277,7 @@ window.__ModuleLoader__.load({
           const blob = new Blob([notesToMarkdown(notes, lang)], { type: 'text/markdown;charset=utf-8' });
           const a = document.createElement('a');
           a.href = URL.createObjectURL(blob);
-          a.download = 'producer-lens.md';
+          a.download = 'directors-view.md';
           a.click();
           setTimeout(() => URL.revokeObjectURL(a.href), 3000);
           setToast(t('已导出 Markdown', 'Markdown exported', 'Markdown を書き出しました'));
@@ -452,7 +462,7 @@ window.__ModuleLoader__.load({
                       key: tab + '-' + it.id,
                       style: S.row,
                     },
-                      h('a', { href: it.url, target: '_blank', rel: 'noopener noreferrer', style: { display: 'flex', flex: 1, gap: 9, alignItems: 'center', textDecoration: 'none', color: 'inherit', minWidth: 0 } },
+                      h('a', { href: detailHref(it), target: '_blank', rel: 'noopener noreferrer', style: { display: 'flex', flex: 1, gap: 9, alignItems: 'center', textDecoration: 'none', color: 'inherit', minWidth: 0 } },
                         h('div', { style: S.coverBox },
                           it.img
                             ? h('img', {
@@ -465,7 +475,7 @@ window.__ModuleLoader__.load({
                             : null,
                         ),
                         h('p', { style: S.title }, titleText(it)),
-                        h('span', { style: S.score }, scoreMap[it.id] || ('BGM ' + (it.score ? it.score.toFixed(1) : '—'))),
+                        h('span', { style: Object.assign({}, S.score, { whiteSpace: 'nowrap', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'right' }) }, scoreMap[it.id] || ('BGM ' + (it.score ? it.score.toFixed(1) : '—'))),
                       ),
                       h('button', {
                         type: 'button',
@@ -486,7 +496,7 @@ window.__ModuleLoader__.load({
                         },
                       }, t('打点', 'Note', '記録')),
                       h('a', {
-                        href: 'animebar://anich?title=' + encodeURIComponent(it.title),
+                        href: watchHref(it),
                         style: Object.assign({}, S.act, { textDecoration: 'none' }),
                         title: t('唤起 AniCh 并复制标题（需安装 AnimeBar.app）', 'Open AniCh and copy title (requires AnimeBar.app)', 'AniCh を起動してタイトルをコピー（AnimeBar.app 必要）'),
                         onClick: () => {
