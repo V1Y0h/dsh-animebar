@@ -33,8 +33,8 @@ window.__ModuleLoader__.load({
       }
       for (const title of Object.keys(byTitle)) {
         lines.push('## ' + title, '');
-        for (const n of byTitle[title].sort((a, b) => (a.ts || '').localeCompare(b.ts || ''))) {
-          lines.push('- ' + (n.ts || '--:--'));
+        for (const n of byTitle[title]) {
+          lines.push('- 记录');
           if (n.phenomena.length) lines.push('  - 现象：' + n.phenomena.join('、'));
           if (n.speculations.length) lines.push('  - 推测：' + n.speculations.join('、') + (n.evidence ? '（依据：' + n.evidence + '）' : ''));
           const dims = Object.keys(n.dims || {}).filter((k) => n.dims[k]);
@@ -229,7 +229,7 @@ window.__ModuleLoader__.load({
       const [kw, setKw] = useState('');
       const [toast, setToast] = useState('');
       const [notes, setNotes] = useState(loadNotes);
-      const [draft, setDraft] = useState({ title: '', ts: '', phenomena: [], speculations: [], evidence: '', reflection: '', dims: {} });
+      const [draft, setDraft] = useState({ title: '', phenomena: [], speculations: [], evidence: '', reflection: '', dims: {} });
 
       const toggleTag = (field, value) => {
         setDraft((d) => {
@@ -246,7 +246,6 @@ window.__ModuleLoader__.load({
         const entry = {
           id: String(Date.now()) + Math.random().toString(16).slice(2, 6),
           title: draft.title.trim(),
-          ts: draft.ts.trim(),
           phenomena: draft.phenomena,
           speculations: draft.speculations,
           evidence: draft.evidence.trim(),
@@ -257,7 +256,7 @@ window.__ModuleLoader__.load({
         const next = [entry].concat(notes);
         setNotes(next);
         saveNotes(next);
-        setDraft({ title: entry.title, ts: '', phenomena: [], speculations: [], evidence: '', reflection: '', dims: {} });
+        setDraft({ title: entry.title, phenomena: [], speculations: [], evidence: '', reflection: '', dims: {} });
         setToast('已记录');
       };
 
@@ -347,13 +346,6 @@ window.__ModuleLoader__.load({
           onChange: (e) => setDraft(Object.assign({}, draft, { title: e.target.value })),
           style: S.field,
         }),
-        h('div', { style: S.label }, '时间码（mm:ss）'),
-        h('input', {
-          value: draft.ts,
-          placeholder: '12:34',
-          onChange: (e) => setDraft(Object.assign({}, draft, { ts: e.target.value })),
-          style: S.field,
-        }),
         h('div', { style: S.label }, '现象（肉眼可见的事实）'),
         h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4 } },
           PHENOMENA.map((t) => chip(t, draft.phenomena.includes(t), () => toggleTag('phenomena', t), 'ph-' + t)),
@@ -392,7 +384,6 @@ window.__ModuleLoader__.load({
           notes.map((n) => h('div', { key: n.id, style: S.noteRow },
             h('div', { style: { display: 'flex', gap: 6, alignItems: 'baseline' } },
               h('span', { style: { fontSize: 12, color: '#e2e8f0' } }, n.title),
-              h('span', { style: { fontSize: 11, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' } }, n.ts || '--:--'),
               h('button', {
                 type: 'button',
                 style: Object.assign({}, S.act, { marginLeft: 'auto' }),
