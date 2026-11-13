@@ -81,6 +81,15 @@ window.__ModuleLoader__.load({
       return out;
     }
 
+
+    // 无封面时用同款阿卡林幽灵占位（内联 SVG，不依赖文件）
+    const GHOST = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 84'>" +
+      "<rect width='60' height='84' fill='#1e293b'/>" +
+      "<path d='M30 20c-9 0-14 7-14 15v20c0 4 3 4 5 2l3-3 3 4c1 2 5 2 6 0l3-4 3 4c2 2 5 2 5-2V35c0-8-5-15-14-15z' fill='#475569' opacity='.65'/>" +
+      "<circle cx='25' cy='38' r='2.4' fill='#1e293b'/><circle cx='35' cy='38' r='2.4' fill='#1e293b'/>" +
+      "</svg>");
+
     const S = {
       btn: {
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
@@ -122,7 +131,12 @@ window.__ModuleLoader__.load({
       },
       list: { overflowY: 'auto', padding: 6 },
       row: { display: 'flex', gap: 9, alignItems: 'center', padding: '5px 7px', borderRadius: 8, textDecoration: 'none', color: 'inherit' },
-      cover: { width: 32, height: 45, borderRadius: 5, objectFit: 'cover', background: '#1e293b', flex: '0 0 auto' },
+      coverBox: {
+        width: 32, height: 45, borderRadius: 5, flex: '0 0 auto', overflow: 'hidden',
+        backgroundColor: '#1e293b', backgroundImage: 'url("' + GHOST + '")',
+        backgroundSize: 'cover', backgroundPosition: 'center',
+      },
+      cover: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
       title: { fontSize: 12.5, lineHeight: 1.35, margin: 0, flex: 1, minWidth: 0 },
       score: { fontSize: 11, fontVariantNumeric: 'tabular-nums', color: '#94a3b8', flex: '0 0 auto' },
       act: { border: '1px solid #1e293b', background: 'transparent', color: '#64748b', borderRadius: 6, fontSize: 10, padding: '2px 6px', cursor: 'pointer', flex: '0 0 auto' },
@@ -254,7 +268,17 @@ window.__ModuleLoader__.load({
                       style: S.row,
                     },
                       h('a', { href: it.url, target: '_blank', rel: 'noopener noreferrer', style: { display: 'flex', flex: 1, gap: 9, alignItems: 'center', textDecoration: 'none', color: 'inherit', minWidth: 0 } },
-                        h('img', { src: it.img, alt: '', loading: 'lazy', style: S.cover }),
+                        h('div', { style: S.coverBox },
+                          it.img
+                            ? h('img', {
+                                src: it.img,
+                                alt: '',
+                                loading: 'lazy',
+                                style: S.cover,
+                                onError: (e) => { e.currentTarget.style.display = 'none'; },
+                              })
+                            : null,
+                        ),
                         h('p', { style: S.title }, it.title),
                         h('span', { style: S.score }, it.score ? it.score.toFixed(1) : '—'),
                       ),
