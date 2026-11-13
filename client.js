@@ -63,6 +63,36 @@ window.__ModuleLoader__.load({
       return lines.join('\n');
     }
 
+
+    const S = {
+      btn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5, height: 28, padding: '0 11px', borderRadius: 999, cursor: 'pointer', border: '1px solid #22c55e', background: '#22c55e', color: '#04140a', fontSize: 12, fontWeight: 600, lineHeight: 1 },
+      hint: { position: 'absolute', left: 0, bottom: 36, whiteSpace: 'nowrap', background: '#0f172a', color: '#e2e8f0', border: '1px solid #22c55e', borderRadius: 8, padding: '5px 9px', fontSize: 11, boxShadow: '0 8px 20px rgba(0,0,0,.35)' },
+      panel: { position: 'fixed', right: 16, bottom: 88, width: 400, maxHeight: '76vh', display: 'flex', flexDirection: 'column', zIndex: 60, background: '#020617', color: '#e2e8f0', borderRadius: 14, border: '1px solid #1e293b', boxShadow: '0 18px 48px rgba(0,0,0,.5)', fontFamily: 'system-ui, -apple-system, "PingFang SC", sans-serif', overflow: 'hidden', fontSize: 13 },
+      head: { display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px 8px', borderBottom: '1px solid #1e293b' },
+      tabs: { display: 'flex', gap: 4, flex: 1, flexWrap: 'wrap' },
+      tab: { border: '1px solid transparent', background: 'transparent', color: '#94a3b8', borderRadius: 7, padding: '4px 10px', fontSize: 12, cursor: 'pointer' },
+      tabOn: { background: 'rgba(34,197,94,.16)', color: '#22c55e', border: '1px solid #166534' },
+      icon: { border: 'none', background: 'transparent', color: '#94a3b8', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 2 },
+      filters: { display: 'flex', flexWrap: 'wrap', gap: 4, padding: '8px 12px', borderBottom: '1px solid #0f172a' },
+      chip: { border: '1px solid #1e293b', background: 'transparent', color: '#94a3b8', borderRadius: 999, padding: '2px 8px', fontSize: 11, cursor: 'pointer' },
+      chipOn: { background: '#1e293b', color: '#e2e8f0', border: '1px solid #334155' },
+      search: { flex: 1, minWidth: 90, background: 'transparent', border: '1px solid #1e293b', borderRadius: 999, color: 'inherit', fontSize: 11, padding: '3px 9px', outline: 'none' },
+      list: { overflowY: 'auto', padding: 6 },
+      row: { display: 'flex', gap: 9, alignItems: 'center', padding: '5px 7px', borderRadius: 8, textDecoration: 'none', color: 'inherit' },
+      coverBox: { width: 32, height: 45, borderRadius: 5, flex: '0 0 auto', overflow: 'hidden', backgroundColor: '#1e293b', backgroundSize: 'cover', backgroundPosition: 'center' },
+      cover: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+      title: { fontSize: 12.5, lineHeight: 1.35, margin: 0, flex: 1, minWidth: 0 },
+      score: { fontSize: 11, fontVariantNumeric: 'tabular-nums', color: '#94a3b8', flex: '0 0 auto' },
+      act: { border: '1px solid #1e293b', background: 'transparent', color: '#64748b', borderRadius: 6, fontSize: 10, padding: '2px 6px', cursor: 'pointer', flex: '0 0 auto' },
+      status: { padding: 16, fontSize: 12, color: '#94a3b8', textAlign: 'center' },
+      field: { width: '100%', boxSizing: 'border-box', background: '#0b1220', border: '1px solid #1e293b', borderRadius: 7, color: '#e2e8f0', fontSize: 12, padding: '5px 8px', outline: 'none', fontFamily: 'inherit' },
+      label: { fontSize: 11, color: '#64748b', margin: '6px 0 3px' },
+      ta: { width: '100%', boxSizing: 'border-box', minHeight: 44, resize: 'vertical', background: '#0b1220', border: '1px solid #1e293b', borderRadius: 7, color: '#e2e8f0', fontSize: 12, padding: '5px 8px', outline: 'none', fontFamily: 'inherit' },
+      primary: { border: '1px solid #22c55e', background: '#22c55e', color: '#04140a', borderRadius: 7, padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
+      noteRow: { padding: '7px 8px', borderBottom: '1px solid #0f172a', fontSize: 12 },
+      toast: { position: 'fixed', right: 24, bottom: 96, zIndex: 70, background: '#166534', color: '#dcfce7', border: '1px solid #22c55e', borderRadius: 8, padding: '6px 12px', fontSize: 12, boxShadow: '0 8px 20px rgba(0,0,0,.4)' },
+    };
+
     function AnimePanel() {
       const [open, setOpen] = useState(false);
       const [lang, setLang] = useState(() => { try { return localStorage.getItem('animebar.panel.lang') || 'zh'; } catch (e) { return 'zh'; } });
