@@ -468,7 +468,17 @@ window.__ModuleLoader__.load({
                       h('button', {
                         type: 'button',
                         style: S.act,
-                        title: '记一笔（制作人视角）',
+                        title: '多方评分（Bangumi / AniList / Kitsu）',
+                        onClick: async () => {
+                          setToast('查分中…');
+                          const r = await multiScore(it);
+                          setToast(r);
+                        },
+                      }, '评分'),
+                      h('button', {
+                        type: 'button',
+                        style: S.act,
+                        title: '记一笔（制作人视角）', 
                         onClick: () => {
                           setDraft(Object.assign({}, draft, { title: it.title }));
                           setTab('notes');
