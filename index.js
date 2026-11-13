@@ -6,20 +6,26 @@ export const inject = ["tools"];
 const CALENDAR = "https://api.bgm.tv/calendar";
 const UA = "dsh-animebar/0.1 (+https://github.com/)";
 
-async function fetchMovies() {
-  const res = await fetch("https://api.bgm.tv/v0/search/subjects?limit=40", {
-    method: "POST",
-    headers: { "user-agent": UA, "content-type": "application/json" },
-    body: JSON.stringify({ keyword: "劇場版", filter: { type: [2] }, sort: "heat" }),
-  });
-  if (!res.ok) throw new Error(`Bangumi search returned ${res.status}`);
-  const data = await res.json();
-  return (data.data ?? []).map((item) => ({
-    title: item.name_cn || item.name,
-    score: item.rating?.score ?? 0,
-    date: item.date ?? "",
-    url: `https://bgm.tv/subject/${item.id}`,
-  }));
+async function fetchMovies(pages = 4) {
+  const all = [];
+  for (let page = 0; page < pages; page += 1) {
+    const res = await fetch(`https://api.bgm.tv/v0/search/subjects?limit=20&offset=${page * 20}`, {
+      method: "POST",
+      headers: { "user-agent": UA, "content-type": "application/json" },
+      body: JSON.stringify({ keyword: "劇場版", filter: { type: [2] }, sort: "heat" }),
+    });
+    if (!res.ok) break;
+    const data = await res.json();
+    const rows = data.data ?? [];
+    if (rows.length === 0) break;
+    all.push(...rows.map((item) => ({
+      title: item.name_cn || item.name,
+      score: item.rating?.score ?? 0,
+      date: item.date ?? "",
+      url: `https://bgm.tv/subject/${item.id}`,
+    })));
+  }
+  return all;
 }
 
 async function fetchCalendar() {
