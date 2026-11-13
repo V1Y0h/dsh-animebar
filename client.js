@@ -45,19 +45,18 @@ window.__ModuleLoader__.load({
       for (const n of list) {
         (byTitle[n.title] = byTitle[n.title] || []).push(n);
       }
-      for (const title of Object.keys(byTitle)) {
-        lines.push('## ' + title, '');
-        for (const n of byTitle[title]) {
-          lines.push('- ' + tt('记录', 'Note', '記録'));
-          if (n.phenomena.length) lines.push('  - ' + tt('现象：', 'Symptoms: ', '兆候：') + n.phenomena.map(tg).join('、'));
-          if (n.speculations.length) lines.push('  - ' + tt('推测：', 'Speculation: ', '推測：') + n.speculations.map(tg).join('、') + (n.evidence ? tt('（依据：', ' (evidence: ', '（根拠：') + n.evidence + '）' : ''));
-          const dims = Object.keys(n.dims || {}).filter((k) => n.dims[k]);
-          if (dims.length) {
-            const dl = (k) => D[k][lang === 'ja' ? 2 : lang === 'en' ? 1 : 0];
-            lines.push('  - ' + tt('维度：', 'Dimensions: ', '軸：') + dims.map((k) => dl(k) + '·' + tg(n.dims[k])).join('，'));
-          }
-          if (n.reflection) lines.push('  - ' + tt('如果是我：', 'If it were me: ', '自分なら：') + n.reflection);
-        }
+      for (const n of list) {
+        lines.push('## ' + (n.title || ''), '');
+        lines.push('- ' + tt('记录', 'Note', '記録'));
+        if (n.phenomena && n.phenomena.length) lines.push('  - ' + tt('现象：', 'Symptoms: ', '兆候：') + n.phenomena.map(tg).join('、'));
+        if (n.speculations && n.speculations.length) lines.push('  - ' + tt('推测：', 'Speculation: ', '推測：') + n.speculations.map(tg).join('、') + (n.evidence ? tt('（依据：', ' (evidence: ', '（根拠：') + n.evidence + '）' : ''));
+        const dims = n.dims || {};
+        const dimParts = Object.keys(dims).filter((k) => dims[k]).map((k) => {
+          const dl = (kk) => D[kk][lang === 'ja' ? 2 : lang === 'en' ? 1 : 0];
+          return dl(k) + '·' + tg(dims[k]);
+        });
+        if (dimParts.length) lines.push('  - ' + tt('维度：', 'Dimensions: ', '軸：') + dimParts.join('，'));
+        if (n.reflection) lines.push('  - ' + tt('如果是我：', 'If it were me: ', '自分なら：') + n.reflection);
         lines.push('');
       }
       return lines.join('\n');
