@@ -421,8 +421,8 @@ window.__ModuleLoader__.load({
               style: Object.assign({}, S.tab, lang === l ? S.tabOn : null),
               onClick: () => { setLang(l); try { localStorage.setItem('animebar.panel.lang', l); } catch (e) {} },
             }, l === 'zh' ? '中文' : l === 'en' ? 'EN' : '日本語')),
-            h('button', { type: 'button', title: '刷新', style: S.icon, onClick: () => load(true) }, '↻'),
-            h('button', { type: 'button', title: '关闭', style: S.icon, onClick: () => setOpen(false) }, '×'),
+            h('button', { type: 'button', title: t('刷新', 'Refresh', '更新'), style: S.icon, onClick: () => load(true) }, '↻'),
+            h('button', { type: 'button', title: t('关闭', 'Close', '閉じる'), style: S.icon, onClick: () => setOpen(false) }, '×'),
           ),
 
           tab === 'notes' ? null : h('div', { style: S.filters },
@@ -491,7 +491,7 @@ window.__ModuleLoader__.load({
                         title: t('唤起 AniCh 并复制标题（需安装 AnimeBar.app）', 'Open AniCh and copy title (requires AnimeBar.app)', 'AniCh を起動してタイトルをコピー（AnimeBar.app 必要）'),
                         onClick: () => {
                           try { navigator.clipboard.writeText(it.title); } catch (e) { /* 忽略 */ }
-                          setToast('已复制：' + it.title);
+                          setToast(t('已复制：', 'Copied: ', 'コピーしました：') + it.title);
                         },
                       }, t('AniCh', 'Watch', '視聴')),
                     )),
