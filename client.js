@@ -40,7 +40,7 @@ window.__ModuleLoader__.load({
       const tt = (zh, en, ja) => (lang === 'ja' ? (ja || en) : lang === 'en' ? en : zh);
       const tg = (zh) => { const p = TAG[zh]; return p ? (lang === 'ja' ? p[1] : lang === 'en' ? p[0] : zh) : zh; };
       const D = { art: ['作画', 'sakuga', '作画'], staging: ['演出', 'direction', '演出'], sound: ['声音', 'sound', '音響'] };
-      const lines = [tt('# 制作人视角记录', "# Director's View", '# 制作者視点'), ''];
+      const lines = [tt('# 制作人视角记录', "# Director's View", '# 制作者視点') + ' (' + list.length + ')', ''];
       const byTitle = {};
       for (const n of list) {
         (byTitle[n.title] = byTitle[n.title] || []).push(n);
