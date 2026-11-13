@@ -36,8 +36,11 @@ window.__ModuleLoader__.load({
       try { localStorage.setItem(NOTES_KEY, JSON.stringify(list)); } catch (e) { /* 忽略 */ }
     }
 
-    function notesToMarkdown(list) {
-      const lines = ['# 制作人视角记录', ''];
+    function notesToMarkdown(list, lang) {
+      const tt = (zh, en, ja) => (lang === 'ja' ? (ja || en) : lang === 'en' ? en : zh);
+      const tg = (zh) => { const p = TAG[zh]; return p ? (lang === 'ja' ? p[1] : lang === 'en' ? p[0] : zh) : zh; };
+      const D = { art: ['作画', 'sakuga', '作画'], staging: ['演出', 'direction', '演出'], sound: ['声音', 'sound', '音響'] };
+      const lines = [tt('# 制作人视角记录', "# Director's View", '# 制作者視点'), ''];
       const byTitle = {};
       for (const n of list) {
         (byTitle[n.title] = byTitle[n.title] || []).push(n);
@@ -45,186 +48,19 @@ window.__ModuleLoader__.load({
       for (const title of Object.keys(byTitle)) {
         lines.push('## ' + title, '');
         for (const n of byTitle[title]) {
-          lines.push('- 记录');
-          if (n.phenomena.length) lines.push('  - 现象：' + n.phenomena.join('、'));
-          if (n.speculations.length) lines.push('  - 推测：' + n.speculations.join('、') + (n.evidence ? '（依据：' + n.evidence + '）' : ''));
+          lines.push('- ' + tt('记录', 'Note', '記録'));
+          if (n.phenomena.length) lines.push('  - ' + tt('现象：', 'Symptoms: ', '兆候：') + n.phenomena.map(tg).join('、'));
+          if (n.speculations.length) lines.push('  - ' + tt('推测：', 'Speculation: ', '推測：') + n.speculations.map(tg).join('、') + (n.evidence ? tt('（依据：', ' (evidence: ', '（根拠：') + n.evidence + '）' : ''));
           const dims = Object.keys(n.dims || {}).filter((k) => n.dims[k]);
           if (dims.length) {
-            const label = { art: '作画', staging: '演出', sound: '声音' };
-            lines.push('  - 维度：' + dims.map((k) => label[k] + '·' + n.dims[k]).join('，'));
+            const dl = (k) => D[k][lang === 'ja' ? 2 : lang === 'en' ? 1 : 0];
+            lines.push('  - ' + tt('维度：', 'Dimensions: ', '軸：') + dims.map((k) => dl(k) + '·' + tg(n.dims[k])).join('，'));
           }
-          if (n.reflection) lines.push('  - 如果是我：' + n.reflection);
+          if (n.reflection) lines.push('  - ' + tt('如果是我：', 'If it were me: ', '自分なら：') + n.reflection);
         }
         lines.push('');
       }
       return lines.join('\n');
-    }
-
-
-
-    function todayKey() {
-      return new Date().toDateString();
-    }
-
-    function readCache() {
-      try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        return parsed && parsed.day === todayKey() ? parsed : null;
-      } catch (e) {
-        return null;
-      }
-    }
-
-    function writeCache(data) {
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(Object.assign({ day: todayKey() }, data)));
-      } catch (e) {
-        /* 存储不可用时每次重新抓 */
-      }
-    }
-
-    async function fetchTv() {
-      const res = await fetch('https://api.bgm.tv/calendar', { headers: UA });
-      if (!res.ok) throw new Error('Bangumi ' + res.status);
-      const data = await res.json();
-      const out = [];
-      for (const day of data) {
-        for (const it of day.items || []) {
-          out.push({
-            id: it.id,
-            title: it.name_cn || it.name,
-            orig: it.name,
-            score: (it.rating && it.rating.score) || 0,
-            pop: (it.rating && it.rating.total) || 0,
-            img: (it.images && (it.images.common || it.images.large)) || '',
-            wd: (day.weekday && day.weekday.id) || 0,
-            date: it.air_date || '',
-            url: 'https://bgm.tv/subject/' + it.id,
-          });
-        }
-      }
-      return out;
-    }
-
-    async function fetchMovies() {
-      const out = [];
-      for (let page = 0; page < 4; page += 1) {
-        const res = await fetch('https://api.bgm.tv/v0/search/subjects?limit=20&offset=' + page * 20, {
-          method: 'POST',
-          headers: Object.assign({ 'content-type': 'application/json' }, UA),
-          body: JSON.stringify({ keyword: '劇場版', filter: { type: [2] }, sort: 'heat' }),
-        });
-        if (!res.ok) break;
-        const data = await res.json();
-        const rows = data.data || [];
-        if (rows.length === 0) break;
-        for (const it of rows) {
-          out.push({
-            id: it.id,
-            title: it.name_cn || it.name,
-            orig: it.name,
-            score: (it.rating && it.rating.score) || 0,
-            pop: (it.rating && it.rating.total) || 0,
-            img: (it.images && (it.images.common || it.images.large)) || '',
-            date: (it.date || '').slice(0, 10),
-            url: 'https://bgm.tv/subject/' + it.id,
-          });
-        }
-      }
-      return out;
-    }
-
-
-    // 无封面时用同款阿卡林幽灵占位（内联 SVG，不依赖文件）
-    const GHOST = 'data:image/svg+xml;utf8,' + encodeURIComponent(
-      "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 84'>" +
-      "<rect width='60' height='84' fill='#1e293b'/>" +
-      "<path d='M30 20c-9 0-14 7-14 15v20c0 4 3 4 5 2l3-3 3 4c1 2 5 2 6 0l3-4 3 4c2 2 5 2 5-2V35c0-8-5-15-14-15z' fill='#475569' opacity='.65'/>" +
-      "<circle cx='25' cy='38' r='2.4' fill='#1e293b'/><circle cx='35' cy='38' r='2.4' fill='#1e293b'/>" +
-      "</svg>");
-
-    const S = {
-      btn: {
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-        height: 28, padding: '0 11px', borderRadius: 999, cursor: 'pointer',
-        border: '1px solid #22c55e', background: '#22c55e', color: '#04140a',
-        fontSize: 12, fontWeight: 600, lineHeight: 1,
-      },
-      hint: {
-        position: 'absolute', left: 0, bottom: 36, whiteSpace: 'nowrap',
-        background: '#0f172a', color: '#e2e8f0', border: '1px solid #22c55e',
-        borderRadius: 8, padding: '5px 9px', fontSize: 11,
-        boxShadow: '0 8px 20px rgba(0,0,0,.35)',
-      },
-      panel: {
-        position: 'fixed', right: 16, bottom: 88, width: 400, maxHeight: '76vh',
-        display: 'flex', flexDirection: 'column', zIndex: 60,
-        background: '#020617', color: '#e2e8f0', borderRadius: 14,
-        border: '1px solid #1e293b', boxShadow: '0 18px 48px rgba(0,0,0,.5)',
-        fontFamily: 'system-ui, -apple-system, "PingFang SC", sans-serif',
-        overflow: 'hidden', fontSize: 13,
-      },
-      head: { display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px 8px', borderBottom: '1px solid #1e293b' },
-      tabs: { display: 'flex', gap: 4, flex: 1 },
-      tab: {
-        border: '1px solid transparent', background: 'transparent', color: '#94a3b8',
-        borderRadius: 7, padding: '4px 10px', fontSize: 12, cursor: 'pointer',
-      },
-      tabOn: { background: 'rgba(34,197,94,.16)', color: '#22c55e', border: '1px solid #166534' },
-      icon: { border: 'none', background: 'transparent', color: '#94a3b8', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 2 },
-      filters: { display: 'flex', flexWrap: 'wrap', gap: 4, padding: '8px 12px', borderBottom: '1px solid #0f172a' },
-      chip: {
-        border: '1px solid #1e293b', background: 'transparent', color: '#94a3b8',
-        borderRadius: 999, padding: '2px 8px', fontSize: 11, cursor: 'pointer',
-      },
-      chipOn: { background: '#1e293b', color: '#e2e8f0', border: '1px solid #334155' },
-      search: {
-        flex: 1, minWidth: 90, background: 'transparent', border: '1px solid #1e293b',
-        borderRadius: 999, color: 'inherit', fontSize: 11, padding: '3px 9px', outline: 'none',
-      },
-      list: { overflowY: 'auto', padding: 6 },
-      row: { display: 'flex', gap: 9, alignItems: 'center', padding: '5px 7px', borderRadius: 8, textDecoration: 'none', color: 'inherit' },
-      coverBox: {
-        width: 32, height: 45, borderRadius: 5, flex: '0 0 auto', overflow: 'hidden',
-        backgroundColor: '#1e293b', backgroundImage: 'url("' + GHOST + '")',
-        backgroundSize: 'cover', backgroundPosition: 'center',
-      },
-      cover: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
-      title: { fontSize: 12.5, lineHeight: 1.35, margin: 0, flex: 1, minWidth: 0 },
-      score: { fontSize: 11, fontVariantNumeric: 'tabular-nums', color: '#94a3b8', flex: '0 0 auto' },
-      act: { border: '1px solid #1e293b', background: 'transparent', color: '#64748b', borderRadius: 6, fontSize: 10, padding: '2px 6px', cursor: 'pointer', flex: '0 0 auto' },
-      status: { padding: 16, fontSize: 12, color: '#94a3b8', textAlign: 'center' },
-      field: {
-        width: '100%', boxSizing: 'border-box', background: '#0b1220', border: '1px solid #1e293b',
-        borderRadius: 7, color: '#e2e8f0', fontSize: 12, padding: '5px 8px', outline: 'none',
-        fontFamily: 'inherit',
-      },
-      label: { fontSize: 11, color: '#64748b', margin: '6px 0 3px' },
-      ta: {
-        width: '100%', boxSizing: 'border-box', minHeight: 44, resize: 'vertical',
-        background: '#0b1220', border: '1px solid #1e293b', borderRadius: 7,
-        color: '#e2e8f0', fontSize: 12, padding: '5px 8px', outline: 'none', fontFamily: 'inherit',
-      },
-      primary: {
-        border: '1px solid #22c55e', background: '#22c55e', color: '#04140a',
-        borderRadius: 7, padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-      },
-      noteRow: { padding: '7px 8px', borderBottom: '1px solid #0f172a', fontSize: 12 },
-      toast: {
-        position: 'fixed', right: 24, bottom: 96, zIndex: 70,
-        background: '#166534', color: '#dcfce7', border: '1px solid #22c55e',
-        borderRadius: 8, padding: '6px 12px', fontSize: 12,
-        boxShadow: '0 8px 20px rgba(0,0,0,.4)',
-      },
-    };
-
-    function scoreMatch(score, filter) {
-      if (filter === 'all') return true;
-      if (filter === '8') return score >= 8;
-      if (filter === '7') return score >= 7 && score < 8;
-      return score < 7;
     }
 
     function AnimePanel() {
@@ -255,7 +91,7 @@ window.__ModuleLoader__.load({
 
       const saveDraft = () => {
         if (!draft.title.trim()) {
-          setToast('先填作品名');
+          setToast(t('先填作品名', 'Enter a title first', '作品名を入力してください'));
           return;
         }
         const entry = {
@@ -272,7 +108,7 @@ window.__ModuleLoader__.load({
         setNotes(next);
         saveNotes(next);
         setDraft({ title: entry.title, phenomena: [], speculations: [], evidence: '', reflection: '', dims: {} });
-        setToast('已记录');
+        setToast(t('已记录', 'Saved', '記録しました'));
       };
 
       const removeNote = (id) => {
@@ -283,15 +119,15 @@ window.__ModuleLoader__.load({
 
       const exportNotes = () => {
         try {
-          const blob = new Blob([notesToMarkdown(notes)], { type: 'text/markdown;charset=utf-8' });
+          const blob = new Blob([notesToMarkdown(notes, lang)], { type: 'text/markdown;charset=utf-8' });
           const a = document.createElement('a');
           a.href = URL.createObjectURL(blob);
           a.download = 'producer-lens.md';
           a.click();
           setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-          setToast('已导出 Markdown');
+          setToast(t('已导出 Markdown', 'Markdown exported', 'Markdown を書き出しました'));
         } catch (e) {
-          setToast('导出失败');
+          setToast(t('导出失败', 'Export failed', '書き出し失敗'));
         }
       };
 
