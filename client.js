@@ -356,7 +356,7 @@ window.__ModuleLoader__.load({
         h('div', { style: S.label }, t('作品名', 'Title', '作品名')),
         h('input', {
           value: draft.title,
-          placeholder: '哪一部',
+          placeholder: t('哪一部', 'Which title', 'どの作品'),
           onChange: (e) => setDraft(Object.assign({}, draft, { title: e.target.value })),
           style: S.field,
         }),
@@ -370,7 +370,7 @@ window.__ModuleLoader__.load({
         ),
         h('input', {
           value: draft.evidence,
-          placeholder: '依据（表记、总集篇、特写修得好…）',
+          placeholder: t('依据（表记、总集篇、特写修得好…）', 'Evidence (credits, recap, a well-fixed close-up…)', '根拠（クレジット、総集編、上手いクローズアップ…）'),
           onChange: (e) => setDraft(Object.assign({}, draft, { evidence: e.target.value })),
           style: Object.assign({}, S.field, { marginTop: 6 }),
         }),
@@ -385,14 +385,14 @@ window.__ModuleLoader__.load({
         h('div', { style: S.label }, t('如果是我，会怎么处理', 'What I would do', '自分ならどうするか')),
         h('textarea', {
           value: draft.reflection,
-          placeholder: '有限资源下你会怎么改这段镜头',
+          placeholder: t('有限资源下你会怎么改这段镜头', 'How would you handle this shot with limited resources?', '限られたリソースでこのカットをどうするか'),
           onChange: (e) => setDraft(Object.assign({}, draft, { reflection: e.target.value })),
           style: S.ta,
         }),
         h('div', { style: { display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' } },
           h('button', { type: 'button', onClick: saveDraft, style: S.primary }, t('保存', 'Save', '保存')),
           h('button', { type: 'button', onClick: exportNotes, style: Object.assign({}, S.chip, { padding: '4px 10px' }) }, t('导出 Markdown', 'Export Markdown', 'Markdown を書き出す')),
-          h('span', { style: { fontSize: 11, color: '#64748b', marginLeft: 'auto' } }, notes.length + ' 条记录'),
+          h('span', { style: { fontSize: 11, color: '#64748b', marginLeft: 'auto' } }, notes.length + t(' 条记录', ' notes', ' 件')),
         ),
         notes.length ? h('div', { style: { marginTop: 10, borderTop: '1px solid #1e293b' } },
           notes.map((n) => h('div', { key: n.id, style: S.noteRow },
@@ -452,7 +452,7 @@ window.__ModuleLoader__.load({
             chip(t('按最新', 'Newest', '新着順'), sortKey === 'date', () => setSortKey('date'), 'k2'),
             h('input', {
               value: kw,
-              placeholder: '搜名字…',
+              placeholder: t('搜名字…', 'Search title…', '検索…'),
               onChange: (e) => setKw(e.target.value),
               style: S.search,
             }),
@@ -463,9 +463,9 @@ window.__ModuleLoader__.load({
             : error
               ? h('div', { style: S.status }, error)
             : source.length === 0
-              ? h('div', { style: S.status }, '正在抓取…')
+              ? h('div', { style: S.status }, t('正在抓取…', 'Loading…', '取得中…'))
               : rows.length === 0
-                ? h('div', { style: S.status }, '没有符合条件的作品')
+                ? h('div', { style: S.status }, t('没有符合条件的作品', 'No matching titles', '該当なし'))
                 : h('div', { style: S.list },
                     rows.map((it) => h('div', {
                       key: tab + '-' + it.id,
@@ -489,9 +489,9 @@ window.__ModuleLoader__.load({
                       h('button', {
                         type: 'button',
                         style: S.act,
-                        title: '多方评分（Bangumi / AniList / Kitsu）',
+                        title: t('多方评分（Bangumi / AniList / Kitsu）', 'Scores (Bangumi / AniList / Kitsu)', '評価（Bangumi / AniList / Kitsu）'),
                         onClick: async () => {
-                          setToast('查分中…');
+                          setToast(t('查分中…', 'Looking up scores…', 'スコア取得中…'));
                           const r = await multiScore(it);
                           setToast(r);
                         },
@@ -499,7 +499,7 @@ window.__ModuleLoader__.load({
                       h('button', {
                         type: 'button',
                         style: S.act,
-                        title: '记一笔（制作人视角）', 
+                        title: t('记一笔（制作人视角）', 'Note (Director view)', '記録（制作者視点）'), 
                         onClick: () => {
                           setDraft(Object.assign({}, draft, { title: it.title }));
                           setTab('notes');
@@ -508,7 +508,7 @@ window.__ModuleLoader__.load({
                       h('a', {
                         href: 'animebar://anich?title=' + encodeURIComponent(it.title),
                         style: Object.assign({}, S.act, { textDecoration: 'none' }),
-                        title: '唤起 AniCh 并复制标题（需安装 AnimeBar.app）',
+                        title: t('唤起 AniCh 并复制标题（需安装 AnimeBar.app）', 'Open AniCh and copy title (requires AnimeBar.app)', 'AniCh を起動してタイトルをコピー（AnimeBar.app 必要）'),
                         onClick: () => {
                           try { navigator.clipboard.writeText(it.title); } catch (e) { /* 忽略 */ }
                           setToast('已复制：' + it.title);
