@@ -11,6 +11,17 @@ window.__ModuleLoader__.load({
     const NOTES_KEY = 'animebar.notes.v1';
     const PHENOMENA = ['静止画多', '精度落差', '画风突变', '重复镜头', '演出神回'];
     const SPECULATIONS = ['疑似外包', '工期紧张', '作监尽力', '资方干预'];
+    const TAG = {
+      '静止画多': ['Many stills', '静止画が多い'], '精度落差': ['Quality drop', '精度の落差'],
+      '画风突变': ['Style shift', '絵柄の変化'], '重复镜头': ['Repeated shots', '繰り返しカット'],
+      '演出神回': ['Standout episode', '神回の演出'], '评分分歧': ['Score divergence', '評価の乖離'],
+      '疑似外包': ['Suspected outsourcing', '外注の可能性'], '工期紧张': ['Schedule crunch', '工期逼迫'],
+      '作监尽力': ['AD carried it', '作監の踏ん張り'], '资方干预': ['Producer meddling', '出資者の介入'],
+      '值得学习': ['Worth studying', '参考になる'], '中规中矩': ['By the book', '可もなく不可もなく'],
+      '有待提高': ['Needs work', '要改善'], '有巧思': ['Clever', '工夫がある'], '平淡': ['Flat', '平凡'],
+      '用力过猛': ['Overwrought', 'やりすぎ'], '加分项': ['Adds value', '加点'], '无感': ['Forgettable', '響かない'],
+      '出戏': ['Breaks immersion', '没入できない'],
+    };
     const DIMENSIONS = [
       { key: 'art', label: '作画', options: ['值得学习', '中规中矩', '有待提高'] },
       { key: 'staging', label: '演出', options: ['有巧思', '平淡', '用力过猛'] },
@@ -218,6 +229,9 @@ window.__ModuleLoader__.load({
 
     function AnimePanel() {
       const [open, setOpen] = useState(false);
+      const [lang, setLang] = useState(() => { try { return localStorage.getItem('animebar.panel.lang') || 'zh'; } catch (e) { return 'zh'; } });
+      const t = (zh, en, ja) => (lang === 'ja' ? (ja || en) : lang === 'en' ? en : zh);
+      const ttag = (zh) => { const p = TAG[zh]; return p ? (lang === 'ja' ? p[1] : lang === 'en' ? p[0] : zh) : zh; };
       const [hint, setHint] = useState(() => {
         try { return localStorage.getItem('animebar.hint') !== 'seen'; } catch (e) { return true; }
       });
@@ -339,20 +353,20 @@ window.__ModuleLoader__.load({
 
 
       const notesView = () => h('div', { style: { overflowY: 'auto', padding: '10px 12px' } },
-        h('div', { style: S.label }, '作品名'),
+        h('div', { style: S.label }, t('作品名', 'Title', '作品名')),
         h('input', {
           value: draft.title,
           placeholder: '哪一部',
           onChange: (e) => setDraft(Object.assign({}, draft, { title: e.target.value })),
           style: S.field,
         }),
-        h('div', { style: S.label }, '现象（肉眼可见的事实）'),
+        h('div', { style: S.label }, t('现象（肉眼可见的事实）', 'Symptoms (visible facts)', '兆候（目に見える事実）')),
         h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4 } },
-          PHENOMENA.map((t) => chip(t, draft.phenomena.includes(t), () => toggleTag('phenomena', t), 'ph-' + t)),
+          PHENOMENA.map((t) => chip(ttag(t), draft.phenomena.includes(t), () => toggleTag('phenomena', t), 'ph-' + t)),
         ),
-        h('div', { style: S.label }, '推测（允许猜错）'),
+        h('div', { style: S.label }, t('推测（允许猜错）', 'Speculation (guessing is fine)', '推測（外れてもいい）')),
         h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4 } },
-          SPECULATIONS.map((t) => chip(t, draft.speculations.includes(t), () => toggleTag('speculations', t), 'sp-' + t)),
+          SPECULATIONS.map((t) => chip(ttag(t), draft.speculations.includes(t), () => toggleTag('speculations', t), 'sp-' + t)),
         ),
         h('input', {
           value: draft.evidence,
@@ -361,14 +375,14 @@ window.__ModuleLoader__.load({
           style: Object.assign({}, S.field, { marginTop: 6 }),
         }),
         DIMENSIONS.map((dim) => h('div', { key: dim.key },
-          h('div', { style: S.label }, dim.label),
+          h('div', { style: S.label }, t(dim.label, dim.label === '作画' ? 'sakuga' : dim.label === '演出' ? 'direction' : 'sound', dim.label === '声音' ? '音響' : dim.label)),
           h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4 } },
-            dim.options.map((opt) => chip(opt, draft.dims[dim.key] === opt, () => {
+            dim.options.map((opt) => chip(ttag(opt), draft.dims[dim.key] === opt, () => {
               setDraft((d) => Object.assign({}, d, { dims: Object.assign({}, d.dims, { [dim.key]: d.dims[dim.key] === opt ? '' : opt }) }));
             }, dim.key + '-' + opt)),
           ),
         )),
-        h('div', { style: S.label }, '如果是我，会怎么处理'),
+        h('div', { style: S.label }, t('如果是我，会怎么处理', 'What I would do', '自分ならどうするか')),
         h('textarea', {
           value: draft.reflection,
           placeholder: '有限资源下你会怎么改这段镜头',
@@ -376,8 +390,8 @@ window.__ModuleLoader__.load({
           style: S.ta,
         }),
         h('div', { style: { display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' } },
-          h('button', { type: 'button', onClick: saveDraft, style: S.primary }, '保存'),
-          h('button', { type: 'button', onClick: exportNotes, style: Object.assign({}, S.chip, { padding: '4px 10px' }) }, '导出 Markdown'),
+          h('button', { type: 'button', onClick: saveDraft, style: S.primary }, t('保存', 'Save', '保存')),
+          h('button', { type: 'button', onClick: exportNotes, style: Object.assign({}, S.chip, { padding: '4px 10px' }) }, t('导出 Markdown', 'Export Markdown', 'Markdown を書き出す')),
           h('span', { style: { fontSize: 11, color: '#64748b', marginLeft: 'auto' } }, notes.length + ' 条记录'),
         ),
         notes.length ? h('div', { style: { marginTop: 10, borderTop: '1px solid #1e293b' } },
@@ -388,13 +402,13 @@ window.__ModuleLoader__.load({
                 type: 'button',
                 style: Object.assign({}, S.act, { marginLeft: 'auto' }),
                 onClick: () => removeNote(n.id),
-              }, '删除'),
+              }, t('删除', 'Delete', '削除')),
             ),
             n.phenomena.length || n.speculations.length
               ? h('div', { style: { fontSize: 11, color: '#64748b', marginTop: 2 } },
-                  n.phenomena.concat(n.speculations).join(' · '))
+                  n.phenomena.concat(n.speculations).map(ttag).join(' · '))
               : null,
-            n.reflection ? h('div', { style: { fontSize: 11.5, color: '#94a3b8', marginTop: 2 } }, '如果是我：' + n.reflection) : null,
+            n.reflection ? h('div', { style: { fontSize: 11.5, color: '#94a3b8', marginTop: 2 } }, t('如果是我：', 'If it were me: ', '自分なら：') + n.reflection) : null,
           )),
         ) : null,
       );
@@ -416,19 +430,26 @@ window.__ModuleLoader__.load({
         open ? h('div', { style: S.panel },
           h('div', { style: S.head },
             h('div', { style: S.tabs },
-              h('button', { type: 'button', onClick: () => setTab('tv'), style: Object.assign({}, S.tab, tab === 'tv' ? S.tabOn : null) }, '新番'),
-              h('button', { type: 'button', onClick: () => setTab('movie'), style: Object.assign({}, S.tab, tab === 'movie' ? S.tabOn : null) }, '剧场版'),
-              h('button', { type: 'button', onClick: () => setTab('notes'), style: Object.assign({}, S.tab, tab === 'notes' ? S.tabOn : null) }, '记录'),
+              h('button', { type: 'button', onClick: () => setTab('tv'), style: Object.assign({}, S.tab, tab === 'tv' ? S.tabOn : null) }, t('新番', 'TV', '新作')),
+              h('button', { type: 'button', onClick: () => setTab('movie'), style: Object.assign({}, S.tab, tab === 'movie' ? S.tabOn : null) }, t('剧场版', 'Films', '劇場版')),
+              h('button', { type: 'button', onClick: () => setTab('notes'), style: Object.assign({}, S.tab, tab === 'notes' ? S.tabOn : null) }, t('记录', 'Notes', '記録')),
             ),
+            ['zh', 'en', 'ja'].map((l) => h('button', {
+              key: 'lang-' + l,
+              type: 'button',
+              title: '语言',
+              style: Object.assign({}, S.tab, lang === l ? S.tabOn : null),
+              onClick: () => { setLang(l); try { localStorage.setItem('animebar.panel.lang', l); } catch (e) {} },
+            }, l === 'zh' ? '中文' : l === 'en' ? 'EN' : '日本語')),
             h('button', { type: 'button', title: '刷新', style: S.icon, onClick: () => load(true) }, '↻'),
             h('button', { type: 'button', title: '关闭', style: S.icon, onClick: () => setOpen(false) }, '×'),
           ),
 
           tab === 'notes' ? null : h('div', { style: S.filters },
-            tab === 'tv' ? chip('全部', wd === 0, () => setWd(0), 'wd0') : null,
+            tab === 'tv' ? chip(t('全部', 'All', '全て'), wd === 0, () => setWd(0), 'wd0') : null,
             tab === 'tv' ? DAYS.map((d, i) => chip(d, wd === i + 1, () => setWd(i + 1), 'wd' + (i + 1))) : null,
-            chip('按热度', sortKey === 'pop', () => setSortKey('pop'), 'k1'),
-            chip('按最新', sortKey === 'date', () => setSortKey('date'), 'k2'),
+            chip(t('按热度', 'Popular', '人気順'), sortKey === 'pop', () => setSortKey('pop'), 'k1'),
+            chip(t('按最新', 'Newest', '新着順'), sortKey === 'date', () => setSortKey('date'), 'k2'),
             h('input', {
               value: kw,
               placeholder: '搜名字…',
@@ -474,7 +495,7 @@ window.__ModuleLoader__.load({
                           const r = await multiScore(it);
                           setToast(r);
                         },
-                      }, '评分'),
+                      }, t('评分', 'Scores', '評価')),
                       h('button', {
                         type: 'button',
                         style: S.act,
@@ -483,7 +504,7 @@ window.__ModuleLoader__.load({
                           setDraft(Object.assign({}, draft, { title: it.title }));
                           setTab('notes');
                         },
-                      }, '打点'),
+                      }, t('打点', 'Note', '記録')),
                       h('a', {
                         href: 'animebar://anich?title=' + encodeURIComponent(it.title),
                         style: Object.assign({}, S.act, { textDecoration: 'none' }),
@@ -492,7 +513,7 @@ window.__ModuleLoader__.load({
                           try { navigator.clipboard.writeText(it.title); } catch (e) { /* 忽略 */ }
                           setToast('已复制：' + it.title);
                         },
-                      }, 'AniCh'),
+                      }, t('AniCh', 'Watch', '視聴')),
                     )),
                   ),
         ) : null,
