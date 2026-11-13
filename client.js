@@ -86,6 +86,7 @@ window.__ModuleLoader__.load({
             title: it.name_cn || it.name,
             orig: it.name,
             score: (it.rating && it.rating.score) || 0,
+            pop: (it.rating && it.rating.total) || 0,
             img: (it.images && (it.images.common || it.images.large)) || '',
             wd: (day.weekday && day.weekday.id) || 0,
             date: it.air_date || '',
@@ -114,6 +115,7 @@ window.__ModuleLoader__.load({
             title: it.name_cn || it.name,
             orig: it.name,
             score: (it.rating && it.rating.score) || 0,
+            pop: (it.rating && it.rating.total) || 0,
             img: (it.images && (it.images.common || it.images.large)) || '',
             date: (it.date || '').slice(0, 10),
             url: 'https://bgm.tv/subject/' + it.id,
@@ -224,8 +226,7 @@ window.__ModuleLoader__.load({
       const [movies, setMovies] = useState(null);
       const [error, setError] = useState('');
       const [wd, setWd] = useState(0);
-      const [score, setScore] = useState('all');
-      const [sortKey, setSortKey] = useState('score');
+      const [sortKey, setSortKey] = useState('pop');
       const [kw, setKw] = useState('');
       const [toast, setToast] = useState('');
       const [notes, setNotes] = useState(loadNotes);
@@ -322,14 +323,13 @@ window.__ModuleLoader__.load({
         const k = kw.trim().toLowerCase();
         const list = source.filter((it) => {
           if (tab === 'tv' && wd !== 0 && it.wd !== wd) return false;
-          if (!scoreMatch(it.score, score)) return false;
           if (k && !(it.title + (it.orig || '')).toLowerCase().includes(k)) return false;
           return true;
         });
         return list.sort((a, b) => (sortKey === 'date'
           ? (b.date || '').localeCompare(a.date || '')
-          : b.score - a.score));
-      }, [source, tab, wd, score, kw, sortKey]);
+          : (b.pop || 0) - (a.pop || 0)));
+      }, [source, tab, wd, kw, sortKey]);
 
       const dismissHint = () => {
         if (!hint) return;
@@ -427,11 +427,7 @@ window.__ModuleLoader__.load({
           tab === 'notes' ? null : h('div', { style: S.filters },
             tab === 'tv' ? chip('全部', wd === 0, () => setWd(0), 'wd0') : null,
             tab === 'tv' ? DAYS.map((d, i) => chip(d, wd === i + 1, () => setWd(i + 1), 'wd' + (i + 1))) : null,
-            chip('评分不限', score === 'all', () => setScore('all'), 's0'),
-            chip('≥8', score === '8', () => setScore('8'), 's8'),
-            chip('7–8', score === '7', () => setScore('7'), 's7'),
-            chip('<7', score === 'low', () => setScore('low'), 'slow'),
-            chip('按评分', sortKey === 'score', () => setSortKey('score'), 'k1'),
+            chip('按热度', sortKey === 'pop', () => setSortKey('pop'), 'k1'),
             chip('按最新', sortKey === 'date', () => setSortKey('date'), 'k2'),
             h('input', {
               value: kw,
@@ -467,7 +463,7 @@ window.__ModuleLoader__.load({
                             : null,
                         ),
                         h('p', { style: S.title }, it.title),
-                        h('span', { style: S.score }, it.score ? it.score.toFixed(1) : '—'),
+                        h('span', { style: S.score }, it.score ? ('BGM ' + it.score.toFixed(1)) : 'BGM —'),
                       ),
                       h('button', {
                         type: 'button',
