@@ -140,11 +140,11 @@ window.__ModuleLoader__.load({
         const res = await fetch('https://graphql.anilist.co', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: 'query($s:String){Media(search:$s,type:ANIME){averageScore}}', variables: { s: query } }),
+          body: JSON.stringify({ query: 'query($s:String){Media(search:$s,type:ANIME){averageScore title{english romaji}}}', variables: { s: query } }),
         });
         const d = await res.json();
         const m = (d.data && d.data.Media) || null;
-        return m && m.averageScore ? m.averageScore / 10 : null;
+        return m && m.averageScore ? { score: m.averageScore / 10, en: (m.title && (m.title.english || m.title.romaji)) || '' } : null;
       } catch (e) { return null; }
     }
 
@@ -158,15 +158,24 @@ window.__ModuleLoader__.load({
     }
 
     const scoreCache = new Map();
+    const titleCache = new Map();
     async function multiScore(it) {
       const key = it.id;
       if (scoreCache.has(key)) return scoreCache.get(key);
       const [al, ki] = await Promise.all([altScore(it.orig || it.title), kitsuScore(it.title)]);
+      if (al && al.en) titleCache.set(it.id, al.en);
       const r = 'BGM ' + (it.score ? it.score.toFixed(1) : '—')
-        + ' · AniList ' + (al != null ? al.toFixed(1) : '—')
+        + ' · AniList ' + (al && al.score != null ? al.score.toFixed(1) : '—')
         + ' · Kitsu ' + (ki != null ? ki.toFixed(1) : '—');
       scoreCache.set(key, r);
       return r;
+    }
+    async function fetchEnglishTitles(items) {
+      for (const it of items) {
+        if (titleCache.has(it.id)) continue;
+        const al = await altScore(it.orig || it.title);
+        if (al && al.en) titleCache.set(it.id, al.en);
+      }
     }
 
     const S = {
@@ -216,6 +225,8 @@ window.__ModuleLoader__.load({
       const titleText = (it) => {
         if (lang === 'ja') return it.orig || it.title;
         if (lang === 'en') {
+          const cached = enTitles[it.id] || titleCache.get(it.id);
+          if (cached) return cached;
           const o = it.orig || '';
           return /[\u3040-\u30ff\u4e00-\u9fff]/.test(o) ? it.title : o;
         }
@@ -233,6 +244,7 @@ window.__ModuleLoader__.load({
       const [kw, setKw] = useState('');
       const [toast, setToast] = useState('');
       const [scoreMap, setScoreMap] = useState({});
+      const [enTitles, setEnTitles] = useState({});
       const [notes, setNotes] = useState(loadNotes);
       const [draft, setDraft] = useState({ title: '', phenomena: [], speculations: [], evidence: '', reflection: '', dims: {} });
 
@@ -321,6 +333,22 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         if (open && tv === null && !error) load(false);
       }, [open, tv, error, load]);
+
+      useEffect(() => {
+        if (lang !== 'en' || !tv || !tv.length) return;
+        let cancelled = false;
+        (async () => {
+          const map = {};
+          const items = tv.slice(0, 30);
+          for (const it of items) {
+            if (titleCache.has(it.id)) { map[it.id] = titleCache.get(it.id); continue; }
+            const al = await altScore(it.orig || it.title);
+            if (al && al.en) { titleCache.set(it.id, al.en); map[it.id] = al.en; }
+          }
+          if (!cancelled) setEnTitles((prev) => Object.assign({}, prev, map));
+        })();
+        return () => { cancelled = true; };
+      }, [lang, tv]);
 
       const source = tab === 'tv' ? tv || [] : movies || [];
       const rows = useMemo(() => {
