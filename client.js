@@ -48,10 +48,16 @@ window.__ModuleLoader__.load({
 
     const styles = {
       btn: {
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        width: 28, height: 28, borderRadius: 8, cursor: 'pointer',
-        border: '1px solid rgba(128,128,128,.35)', background: 'transparent',
-        color: 'inherit', fontSize: 13, lineHeight: 1, padding: 0,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+        height: 28, padding: '0 11px', borderRadius: 999, cursor: 'pointer',
+        border: '1px solid #22c55e', background: '#22c55e', color: '#04140a',
+        fontSize: 12, fontWeight: 600, lineHeight: 1,
+      },
+      hint: {
+        position: 'absolute', left: 0, bottom: 36, whiteSpace: 'nowrap',
+        background: '#0f172a', color: '#e2e8f0', border: '1px solid #22c55e',
+        borderRadius: 8, padding: '5px 9px', fontSize: 11,
+        boxShadow: '0 8px 20px rgba(0,0,0,.35)',
       },
       panel: {
         position: 'fixed', right: 16, bottom: 88, width: 360, maxHeight: '70vh',
@@ -81,6 +87,9 @@ window.__ModuleLoader__.load({
 
     function AnimeButton() {
       const [open, setOpen] = useState(false);
+      const [hint, setHint] = useState(() => {
+        try { return localStorage.getItem('animebar.hint') !== 'seen'; } catch (e) { return true; }
+      });
       const [items, setItems] = useState(null);
       const [error, setError] = useState('');
 
@@ -107,13 +116,20 @@ window.__ModuleLoader__.load({
         if (open && items === null && !error) load(false);
       }, [open, items, error, load]);
 
-      return h('div', { style: { display: 'inline-flex' } },
+      const dismissHint = () => {
+        if (!hint) return;
+        setHint(false);
+        try { localStorage.setItem('animebar.hint', 'seen'); } catch (e) { /* 忽略 */ }
+      };
+
+      return h('div', { style: { display: 'inline-flex', position: 'relative' } },
+        hint && !open ? h('div', { style: styles.hint }, '点这里看今天的番') : null,
         h('button', {
           type: 'button',
-          title: '今天的番',
-          onClick: () => setOpen((v) => !v),
-          style: Object.assign({}, styles.btn, open ? { background: 'rgba(34,197,94,.18)', borderColor: '#22c55e' } : null),
-        }, '番'),
+          title: '今天的番（Bangumi）',
+          onClick: () => { setOpen((v) => !v); dismissHint(); },
+          style: styles.btn,
+        }, '番表'),
         open ? h('div', { style: styles.panel },
           h('div', { style: styles.head },
             h('span', null, '今天的番'),
