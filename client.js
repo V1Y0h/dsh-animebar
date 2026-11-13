@@ -141,6 +141,12 @@ window.__ModuleLoader__.load({
       score: { fontSize: 11, fontVariantNumeric: 'tabular-nums', color: '#94a3b8', flex: '0 0 auto' },
       act: { border: '1px solid #1e293b', background: 'transparent', color: '#64748b', borderRadius: 6, fontSize: 10, padding: '2px 6px', cursor: 'pointer', flex: '0 0 auto' },
       status: { padding: 16, fontSize: 12, color: '#94a3b8', textAlign: 'center' },
+      toast: {
+        position: 'fixed', right: 24, bottom: 96, zIndex: 70,
+        background: '#166534', color: '#dcfce7', border: '1px solid #22c55e',
+        borderRadius: 8, padding: '6px 12px', fontSize: 12,
+        boxShadow: '0 8px 20px rgba(0,0,0,.4)',
+      },
     };
 
     function scoreMatch(score, filter) {
@@ -163,6 +169,13 @@ window.__ModuleLoader__.load({
       const [score, setScore] = useState('all');
       const [sortKey, setSortKey] = useState('score');
       const [kw, setKw] = useState('');
+      const [toast, setToast] = useState('');
+
+      useEffect(() => {
+        if (!toast) return undefined;
+        const timer = setTimeout(() => setToast(''), 2000);
+        return () => clearTimeout(timer);
+      }, [toast]);
 
       const load = useCallback(async (force) => {
         if (!force) {
@@ -282,17 +295,19 @@ window.__ModuleLoader__.load({
                         h('p', { style: S.title }, it.title),
                         h('span', { style: S.score }, it.score ? it.score.toFixed(1) : '—'),
                       ),
-                      h('button', {
-                        type: 'button',
-                        style: S.act,
-                        title: '复制标题',
+                      h('a', {
+                        href: 'animebar://anich?title=' + encodeURIComponent(it.title),
+                        style: Object.assign({}, S.act, { textDecoration: 'none' }),
+                        title: '唤起 AniCh 并复制标题（需安装 AnimeBar.app）',
                         onClick: () => {
                           try { navigator.clipboard.writeText(it.title); } catch (e) { /* 忽略 */ }
+                          setToast('已复制：' + it.title);
                         },
-                      }, '复制'),
+                      }, 'AniCh'),
                     )),
                   ),
         ) : null,
+        toast ? h('div', { style: S.toast }, toast) : null,
       );
     }
 
