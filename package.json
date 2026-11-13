@@ -1,6 +1,6 @@
 {
   "name": "dsh-animebar",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "type": "module",
   "description": "Anime airing board for DeepSeek Harness — today's lineup from Bangumi.",
   "exports": {
@@ -44,7 +44,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/V1Y0h/animebar-plugin.git"
+    "url": "git+https://github.com/V1Y0h/dsh-animebar.git"
   },
-  "homepage": "https://github.com/V1Y0h/animebar-plugin#readme"
+  "homepage": "https://github.com/V1Y0h/dsh-animebar#readme"
 }

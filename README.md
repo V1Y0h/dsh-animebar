@@ -36,7 +36,7 @@
 dsh plugin --profile desktop add dsh-animebar
 
 # 或者直接从仓库装
-dsh plugin --profile desktop add github:V1Y0h/animebar-plugin
+dsh plugin --profile desktop add github:V1Y0h/dsh-animebar
 ```
 
 也可以把本地目录加进 **设置 → 插件**。安装后重启 DeepSeek Harness，工具才会注册。
@@ -88,7 +88,7 @@ Registers one tool, `anime_today`, which reads the public [Bangumi](https://bgm.
 dsh plugin --profile desktop add dsh-animebar
 
 # or straight from the repository
-dsh plugin --profile desktop add github:V1Y0h/animebar-plugin
+dsh plugin --profile desktop add github:V1Y0h/dsh-animebar
 ```
 
 Or point **Plugins → Add plugin** at a local checkout. Restart DeepSeek Harness afterwards so the tool registers.
