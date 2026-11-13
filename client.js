@@ -64,6 +64,112 @@ window.__ModuleLoader__.load({
     }
 
 
+
+    function readCache() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && parsed.day === new Date().toDateString() ? parsed : null;
+      } catch (e) { return null; }
+    }
+
+    function writeCache(data) {
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify(Object.assign({ day: new Date().toDateString() }, data))); } catch (e) { /* 忽略 */ }
+    }
+
+    async function fetchTv() {
+      const res = await fetch('https://api.bgm.tv/calendar', { headers: UA });
+      if (!res.ok) throw new Error('Bangumi ' + res.status);
+      const data = await res.json();
+      const out = [];
+      for (const day of data) {
+        for (const it of day.items || []) {
+          out.push({
+            id: it.id,
+            title: it.name_cn || it.name,
+            orig: it.name,
+            score: (it.rating && it.rating.score) || 0,
+            pop: (it.rating && it.rating.total) || 0,
+            img: (it.images && (it.images.common || it.images.large)) || '',
+            wd: (day.weekday && day.weekday.id) || 0,
+            date: it.air_date || '',
+            url: 'https://bgm.tv/subject/' + it.id,
+          });
+        }
+      }
+      return out;
+    }
+
+    async function fetchMovies() {
+      const out = [];
+      for (let page = 0; page < 4; page += 1) {
+        const res = await fetch('https://api.bgm.tv/v0/search/subjects?limit=20&offset=' + page * 20, {
+          method: 'POST',
+          headers: Object.assign({ 'content-type': 'application/json' }, UA),
+          body: JSON.stringify({ keyword: '劇場版', filter: { type: [2] }, sort: 'heat' }),
+        });
+        if (!res.ok) break;
+        const data = await res.json();
+        const rows = data.data || [];
+        if (rows.length === 0) break;
+        for (const it of rows) {
+          out.push({
+            id: it.id,
+            title: it.name_cn || it.name,
+            orig: it.name,
+            score: (it.rating && it.rating.score) || 0,
+            pop: (it.rating && it.rating.total) || 0,
+            img: (it.images && (it.images.common || it.images.large)) || '',
+            date: (it.date || '').slice(0, 10),
+            url: 'https://bgm.tv/subject/' + it.id,
+          });
+        }
+      }
+      return out;
+    }
+
+    const GHOST = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 84'>" +
+      "<rect width='60' height='84' fill='#1e293b'/>" +
+      "<path d='M30 20c-9 0-14 7-14 15v20c0 4 3 4 5 2l3-3 3 4c1 2 5 2 6 0l3-4 3 4c2 2 5 2 5-2V35c0-8-5-15-14-15z' fill='#475569' opacity='.65'/>" +
+      "<circle cx='25' cy='38' r='2.4' fill='#1e293b'/><circle cx='35' cy='38' r='2.4' fill='#1e293b'/>" +
+      "</svg>");
+
+    async function altScore(query) {
+      try {
+        const res = await fetch('https://graphql.anilist.co', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: 'query($s:String){Media(search:$s,type:ANIME){averageScore}}', variables: { s: query } }),
+        });
+        const d = await res.json();
+        const m = (d.data && d.data.Media) || null;
+        return m && m.averageScore ? m.averageScore / 10 : null;
+      } catch (e) { return null; }
+    }
+
+    async function kitsuScore(query) {
+      try {
+        const res = await fetch('https://kitsu.io/api/edge/anime?filter%5Btext%5D=' + encodeURIComponent(query) + '&page%5Blimit%5D=1');
+        const d = await res.json();
+        const a = (d.data && d.data[0] && d.data[0].attributes) || null;
+        return a && a.averageRating ? a.averageRating / 10 : null;
+      } catch (e) { return null; }
+    }
+
+    const scoreCache = new Map();
+    async function multiScore(it) {
+      const key = it.id;
+      if (scoreCache.has(key)) return scoreCache.get(key);
+      const [al, ki] = await Promise.all([altScore(it.orig || it.title), kitsuScore(it.title)]);
+      const r = 'BGM ' + (it.score ? it.score.toFixed(1) : '—')
+        + ' · AniList ' + (al != null ? al.toFixed(1) : '—')
+        + ' · Kitsu ' + (ki != null ? ki.toFixed(1) : '—');
+      scoreCache.set(key, r);
+      return r;
+    }
+
     const S = {
       btn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5, height: 28, padding: '0 11px', borderRadius: 999, cursor: 'pointer', border: '1px solid #22c55e', background: '#22c55e', color: '#04140a', fontSize: 12, fontWeight: 600, lineHeight: 1 },
       hint: { position: 'absolute', left: 0, bottom: 36, whiteSpace: 'nowrap', background: '#0f172a', color: '#e2e8f0', border: '1px solid #22c55e', borderRadius: 8, padding: '5px 9px', fontSize: 11, boxShadow: '0 8px 20px rgba(0,0,0,.35)' },
