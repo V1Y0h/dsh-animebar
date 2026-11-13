@@ -8,6 +8,48 @@ window.__ModuleLoader__.load({
     const UA = { 'user-agent': 'dsh-animebar/0.3' };
     const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
     const CACHE_KEY = 'animebar.panel.cache.v2';
+    const NOTES_KEY = 'animebar.notes.v1';
+    const PHENOMENA = ['静止画多', '精度落差', '画风突变', '重复镜头', '演出神回'];
+    const SPECULATIONS = ['疑似外包', '工期紧张', '作监尽力', '资方干预'];
+    const DIMENSIONS = [
+      { key: 'art', label: '作画', options: ['值得学习', '中规中矩', '有待提高'] },
+      { key: 'staging', label: '演出', options: ['有巧思', '平淡', '用力过猛'] },
+      { key: 'sound', label: '声音', options: ['加分项', '无感', '出戏'] },
+    ];
+
+    function loadNotes() {
+      try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '[]'); } catch (e) { return []; }
+    }
+
+    function saveNotes(list) {
+      try { localStorage.setItem(NOTES_KEY, JSON.stringify(list)); } catch (e) { /* 忽略 */ }
+    }
+
+    function notesToMarkdown(list) {
+      const lines = ['# 制作人视角记录', ''];
+      const byTitle = {};
+      for (const n of list) {
+        (byTitle[n.title] = byTitle[n.title] || []).push(n);
+      }
+      for (const title of Object.keys(byTitle)) {
+        lines.push('## ' + title, '');
+        for (const n of byTitle[title].sort((a, b) => (a.ts || '').localeCompare(b.ts || ''))) {
+          lines.push('- ' + (n.ts || '--:--'));
+          if (n.phenomena.length) lines.push('  - 现象：' + n.phenomena.join('、'));
+          if (n.speculations.length) lines.push('  - 推测：' + n.speculations.join('、') + (n.evidence ? '（依据：' + n.evidence + '）' : ''));
+          const dims = Object.keys(n.dims || {}).filter((k) => n.dims[k]);
+          if (dims.length) {
+            const label = { art: '作画', staging: '演出', sound: '声音' };
+            lines.push('  - 维度：' + dims.map((k) => label[k] + '·' + n.dims[k]).join('，'));
+          }
+          if (n.reflection) lines.push('  - 如果是我：' + n.reflection);
+        }
+        lines.push('');
+      }
+      return lines.join('\n');
+    }
+
+
 
     function todayKey() {
       return new Date().toDateString();
@@ -141,6 +183,22 @@ window.__ModuleLoader__.load({
       score: { fontSize: 11, fontVariantNumeric: 'tabular-nums', color: '#94a3b8', flex: '0 0 auto' },
       act: { border: '1px solid #1e293b', background: 'transparent', color: '#64748b', borderRadius: 6, fontSize: 10, padding: '2px 6px', cursor: 'pointer', flex: '0 0 auto' },
       status: { padding: 16, fontSize: 12, color: '#94a3b8', textAlign: 'center' },
+      field: {
+        width: '100%', boxSizing: 'border-box', background: '#0b1220', border: '1px solid #1e293b',
+        borderRadius: 7, color: '#e2e8f0', fontSize: 12, padding: '5px 8px', outline: 'none',
+        fontFamily: 'inherit',
+      },
+      label: { fontSize: 11, color: '#64748b', margin: '6px 0 3px' },
+      ta: {
+        width: '100%', boxSizing: 'border-box', minHeight: 44, resize: 'vertical',
+        background: '#0b1220', border: '1px solid #1e293b', borderRadius: 7,
+        color: '#e2e8f0', fontSize: 12, padding: '5px 8px', outline: 'none', fontFamily: 'inherit',
+      },
+      primary: {
+        border: '1px solid #22c55e', background: '#22c55e', color: '#04140a',
+        borderRadius: 7, padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+      },
+      noteRow: { padding: '7px 8px', borderBottom: '1px solid #0f172a', fontSize: 12 },
       toast: {
         position: 'fixed', right: 24, bottom: 96, zIndex: 70,
         background: '#166534', color: '#dcfce7', border: '1px solid #22c55e',
@@ -170,6 +228,58 @@ window.__ModuleLoader__.load({
       const [sortKey, setSortKey] = useState('score');
       const [kw, setKw] = useState('');
       const [toast, setToast] = useState('');
+      const [notes, setNotes] = useState(loadNotes);
+      const [draft, setDraft] = useState({ title: '', ts: '', phenomena: [], speculations: [], evidence: '', reflection: '', dims: {} });
+
+      const toggleTag = (field, value) => {
+        setDraft((d) => {
+          const has = d[field].includes(value);
+          return Object.assign({}, d, { [field]: has ? d[field].filter((x) => x !== value) : d[field].concat(value) });
+        });
+      };
+
+      const saveDraft = () => {
+        if (!draft.title.trim()) {
+          setToast('先填作品名');
+          return;
+        }
+        const entry = {
+          id: String(Date.now()) + Math.random().toString(16).slice(2, 6),
+          title: draft.title.trim(),
+          ts: draft.ts.trim(),
+          phenomena: draft.phenomena,
+          speculations: draft.speculations,
+          evidence: draft.evidence.trim(),
+          reflection: draft.reflection.trim(),
+          dims: draft.dims,
+          createdAt: new Date().toISOString(),
+        };
+        const next = [entry].concat(notes);
+        setNotes(next);
+        saveNotes(next);
+        setDraft({ title: entry.title, ts: '', phenomena: [], speculations: [], evidence: '', reflection: '', dims: {} });
+        setToast('已记录');
+      };
+
+      const removeNote = (id) => {
+        const next = notes.filter((n) => n.id !== id);
+        setNotes(next);
+        saveNotes(next);
+      };
+
+      const exportNotes = () => {
+        try {
+          const blob = new Blob([notesToMarkdown(notes)], { type: 'text/markdown;charset=utf-8' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'producer-lens.md';
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+          setToast('已导出 Markdown');
+        } catch (e) {
+          setToast('导出失败');
+        }
+      };
 
       useEffect(() => {
         if (!toast) return undefined;
@@ -228,6 +338,76 @@ window.__ModuleLoader__.load({
         try { localStorage.setItem('animebar.hint', 'seen'); } catch (e) { /* 忽略 */ }
       };
 
+
+      const notesView = () => h('div', { style: { overflowY: 'auto', padding: '10px 12px' } },
+        h('div', { style: S.label }, '作品名'),
+        h('input', {
+          value: draft.title,
+          placeholder: '哪一部',
+          onChange: (e) => setDraft(Object.assign({}, draft, { title: e.target.value })),
+          style: S.field,
+        }),
+        h('div', { style: S.label }, '时间码（mm:ss）'),
+        h('input', {
+          value: draft.ts,
+          placeholder: '12:34',
+          onChange: (e) => setDraft(Object.assign({}, draft, { ts: e.target.value })),
+          style: S.field,
+        }),
+        h('div', { style: S.label }, '现象（肉眼可见的事实）'),
+        h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4 } },
+          PHENOMENA.map((t) => chip(t, draft.phenomena.includes(t), () => toggleTag('phenomena', t), 'ph-' + t)),
+        ),
+        h('div', { style: S.label }, '推测（允许猜错）'),
+        h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4 } },
+          SPECULATIONS.map((t) => chip(t, draft.speculations.includes(t), () => toggleTag('speculations', t), 'sp-' + t)),
+        ),
+        h('input', {
+          value: draft.evidence,
+          placeholder: '依据（表记、总集篇、特写修得好…）',
+          onChange: (e) => setDraft(Object.assign({}, draft, { evidence: e.target.value })),
+          style: Object.assign({}, S.field, { marginTop: 6 }),
+        }),
+        DIMENSIONS.map((dim) => h('div', { key: dim.key },
+          h('div', { style: S.label }, dim.label),
+          h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4 } },
+            dim.options.map((opt) => chip(opt, draft.dims[dim.key] === opt, () => {
+              setDraft((d) => Object.assign({}, d, { dims: Object.assign({}, d.dims, { [dim.key]: d.dims[dim.key] === opt ? '' : opt }) }));
+            }, dim.key + '-' + opt)),
+          ),
+        )),
+        h('div', { style: S.label }, '如果是我，会怎么处理'),
+        h('textarea', {
+          value: draft.reflection,
+          placeholder: '有限资源下你会怎么改这段镜头',
+          onChange: (e) => setDraft(Object.assign({}, draft, { reflection: e.target.value })),
+          style: S.ta,
+        }),
+        h('div', { style: { display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' } },
+          h('button', { type: 'button', onClick: saveDraft, style: S.primary }, '保存'),
+          h('button', { type: 'button', onClick: exportNotes, style: Object.assign({}, S.chip, { padding: '4px 10px' }) }, '导出 Markdown'),
+          h('span', { style: { fontSize: 11, color: '#64748b', marginLeft: 'auto' } }, notes.length + ' 条记录'),
+        ),
+        notes.length ? h('div', { style: { marginTop: 10, borderTop: '1px solid #1e293b' } },
+          notes.map((n) => h('div', { key: n.id, style: S.noteRow },
+            h('div', { style: { display: 'flex', gap: 6, alignItems: 'baseline' } },
+              h('span', { style: { fontSize: 12, color: '#e2e8f0' } }, n.title),
+              h('span', { style: { fontSize: 11, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' } }, n.ts || '--:--'),
+              h('button', {
+                type: 'button',
+                style: Object.assign({}, S.act, { marginLeft: 'auto' }),
+                onClick: () => removeNote(n.id),
+              }, '删除'),
+            ),
+            n.phenomena.length || n.speculations.length
+              ? h('div', { style: { fontSize: 11, color: '#64748b', marginTop: 2 } },
+                  n.phenomena.concat(n.speculations).join(' · '))
+              : null,
+            n.reflection ? h('div', { style: { fontSize: 11.5, color: '#94a3b8', marginTop: 2 } }, '如果是我：' + n.reflection) : null,
+          )),
+        ) : null,
+      );
+
       const chip = (label, active, onClick, key) => h('button', {
         key, type: 'button', onClick,
         style: active ? Object.assign({}, S.chip, S.chipOn) : S.chip,
@@ -247,12 +427,13 @@ window.__ModuleLoader__.load({
             h('div', { style: S.tabs },
               h('button', { type: 'button', onClick: () => setTab('tv'), style: Object.assign({}, S.tab, tab === 'tv' ? S.tabOn : null) }, '新番'),
               h('button', { type: 'button', onClick: () => setTab('movie'), style: Object.assign({}, S.tab, tab === 'movie' ? S.tabOn : null) }, '剧场版'),
+              h('button', { type: 'button', onClick: () => setTab('notes'), style: Object.assign({}, S.tab, tab === 'notes' ? S.tabOn : null) }, '记录'),
             ),
             h('button', { type: 'button', title: '刷新', style: S.icon, onClick: () => load(true) }, '↻'),
             h('button', { type: 'button', title: '关闭', style: S.icon, onClick: () => setOpen(false) }, '×'),
           ),
 
-          h('div', { style: S.filters },
+          tab === 'notes' ? null : h('div', { style: S.filters },
             tab === 'tv' ? chip('全部', wd === 0, () => setWd(0), 'wd0') : null,
             tab === 'tv' ? DAYS.map((d, i) => chip(d, wd === i + 1, () => setWd(i + 1), 'wd' + (i + 1))) : null,
             chip('评分不限', score === 'all', () => setScore('all'), 's0'),
@@ -269,8 +450,10 @@ window.__ModuleLoader__.load({
             }),
           ),
 
-          error
-            ? h('div', { style: S.status }, error)
+          tab === 'notes'
+            ? notesView()
+            : error
+              ? h('div', { style: S.status }, error)
             : source.length === 0
               ? h('div', { style: S.status }, '正在抓取…')
               : rows.length === 0
@@ -295,6 +478,15 @@ window.__ModuleLoader__.load({
                         h('p', { style: S.title }, it.title),
                         h('span', { style: S.score }, it.score ? it.score.toFixed(1) : '—'),
                       ),
+                      h('button', {
+                        type: 'button',
+                        style: S.act,
+                        title: '记一笔（制作人视角）',
+                        onClick: () => {
+                          setDraft(Object.assign({}, draft, { title: it.title }));
+                          setTab('notes');
+                        },
+                      }, '打点'),
                       h('a', {
                         href: 'animebar://anich?title=' + encodeURIComponent(it.title),
                         style: Object.assign({}, S.act, { textDecoration: 'none' }),
