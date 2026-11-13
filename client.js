@@ -7,6 +7,8 @@ window.__ModuleLoader__.load({
 
     const UA = { 'user-agent': 'dsh-animebar/0.3' };
     const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    const DAYS_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const DAYS_JA = ['月', '火', '水', '木', '金', '土', '日'];
     const CACHE_KEY = 'animebar.panel.cache.v2';
     const EN_CACHE = 'animebar.entitles.v1';
     const NOTES_KEY = 'animebar.notes.v1';
@@ -353,7 +355,7 @@ window.__ModuleLoader__.load({
               try { localStorage.setItem(EN_CACHE, JSON.stringify(stored)); } catch (e) {}
               if (!cancelled) setEnTitles((prev) => Object.assign({}, prev, { [it.id]: al.en }));
             }
-            await new Promise((r) => setTimeout(r, 250));
+            await new Promise((r) => setTimeout(r, 700));
           }
         })();
         return () => { cancelled = true; };
@@ -474,7 +476,7 @@ window.__ModuleLoader__.load({
 
           tab === 'notes' ? null : h('div', { style: S.filters },
             tab === 'tv' ? chip(t('全部', 'All', '全て'), wd === 0, () => setWd(0), 'wd0') : null,
-            tab === 'tv' ? DAYS.map((d, i) => chip(d, wd === i + 1, () => setWd(i + 1), 'wd' + (i + 1))) : null,
+            tab === 'tv' ? DAYS.map((d, i) => chip(lang === 'en' ? DAYS_EN[i] : lang === 'ja' ? DAYS_JA[i] : d, wd === i + 1, () => setWd(i + 1), 'wd' + (i + 1))) : null,
             chip(t('按热度', 'Popular', '人気順'), sortKey === 'pop', () => setSortKey('pop'), 'k1'),
             chip(t('按最新', 'Newest', '新着順'), sortKey === 'date', () => setSortKey('date'), 'k2'),
             h('input', {
@@ -510,14 +512,20 @@ window.__ModuleLoader__.load({
                               })
                             : null,
                         ),
-                        h('p', { style: S.title }, titleText(it)),
-                        h('span', { style: Object.assign({}, S.score, { whiteSpace: 'nowrap', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'right' }) }, scoreMap[it.id] || ('BGM ' + (it.score ? it.score.toFixed(1) : '—'))),
+                        h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: 2 } },
+                          h('p', { style: S.title }, titleText(it)),
+                          h('span', { style: S.score }, scoreMap[it.id] || ('BGM ' + (it.score ? it.score.toFixed(1) : '—'))),
+                        ),
                       ),
                       h('button', {
                         type: 'button',
                         style: S.act,
                         title: t('多方评分（Bangumi / AniList / Kitsu）', 'Scores (Bangumi / AniList / Kitsu)', '評価（Bangumi / AniList / Kitsu）'),
                         onClick: async () => {
+                          if (scoreMap[it.id]) {
+                            setScoreMap((m) => { const n = Object.assign({}, m); delete n[it.id]; return n; });
+                            return;
+                          }
                           const r = await multiScore(it);
                           setScoreMap((m) => Object.assign({}, m, { [it.id]: r }));
                         },
