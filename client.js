@@ -204,6 +204,14 @@ window.__ModuleLoader__.load({
       const [lang, setLang] = useState(() => { try { return localStorage.getItem('animebar.panel.lang') || 'zh'; } catch (e) { return 'zh'; } });
       const t = (zh, en, ja) => (lang === 'ja' ? (ja || en) : lang === 'en' ? en : zh);
       const ttag = (zh) => { const p = TAG[zh]; return p ? (lang === 'ja' ? p[1] : lang === 'en' ? p[0] : zh) : zh; };
+      const titleText = (it) => {
+        if (lang === 'ja') return it.orig || it.title;
+        if (lang === 'en') {
+          const o = it.orig || '';
+          return /[\u3040-\u30ff\u4e00-\u9fff]/.test(o) ? it.title : o;
+        }
+        return it.title;
+      };
       const [hint, setHint] = useState(() => {
         try { return localStorage.getItem('animebar.hint') !== 'seen'; } catch (e) { return true; }
       });
@@ -455,7 +463,7 @@ window.__ModuleLoader__.load({
                               })
                             : null,
                         ),
-                        h('p', { style: S.title }, it.title),
+                        h('p', { style: S.title }, titleText(it)),
                         h('span', { style: S.score }, it.score ? ('BGM ' + it.score.toFixed(1)) : 'BGM —'),
                       ),
                       h('button', {
