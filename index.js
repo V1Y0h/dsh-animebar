@@ -13,12 +13,12 @@ async function fetchCalendar() {
 }
 
 export function apply(ctx, config) {
-  const minScore = Number(config?.minScore ?? 7);
+  const minScore = Number(config?.minScore ?? 0);
   const limit = Number(config?.limit ?? 8);
 
   ctx.tools.register(defineTool({
     name: "anime_today",
-    description: "List the anime airing on a given weekday (default: today) from Bangumi, ranked by rating.",
+    description: "List every anime airing on a given weekday (default: today) from Bangumi, ranked by rating. Low-rated titles are included; raise minScore in the bundle config to filter.",
     parameters: {
       weekday: {
         type: "number",

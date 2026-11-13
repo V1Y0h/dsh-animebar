@@ -44,7 +44,7 @@ The bundle row accepts `config`:
 
 | key | default | meaning |
 | --- | --- | --- |
-| `minScore` | `7` | skip titles rated below this |
+| `minScore` | `0` | skip titles rated below this; 0 keeps everything, including unrated |
 | `limit` | `8` | maximum titles returned |
 
 ### Data and privacy
@@ -108,7 +108,7 @@ bundle 那一行支持 `config`：
 
 | 字段 | 默认 | 说明 |
 | --- | --- | --- |
-| `minScore` | `7` | 低于这个分数的不返回 |
+| `minScore` | `0` | 低于这个分数的不返回；0 表示全部显示（含无评分） |
 | `limit` | `8` | 最多返回几部 |
 
 ### 数据与隐私
