@@ -8,6 +8,7 @@ window.__ModuleLoader__.load({
     const UA = { 'user-agent': 'dsh-animebar/0.3' };
     const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
     const CACHE_KEY = 'animebar.panel.cache.v2';
+    const EN_CACHE = 'animebar.entitles.v1';
     const NOTES_KEY = 'animebar.notes.v1';
     const PHENOMENA = ['静止画多', '精度落差', '画风突变', '重复镜头', '演出神回'];
     const SPECULATIONS = ['疑似外包', '工期紧张', '作监尽力', '资方干预'];
@@ -227,8 +228,7 @@ window.__ModuleLoader__.load({
         if (lang === 'en') {
           const cached = enTitles[it.id] || titleCache.get(it.id);
           if (cached) return cached;
-          const o = it.orig || '';
-          return /[\u3040-\u30ff\u4e00-\u9fff]/.test(o) ? it.title : o;
+          return it.orig || it.title;
         }
         return it.title;
       };
@@ -337,18 +337,27 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         if (lang !== 'en' || !tv || !tv.length) return;
         let cancelled = false;
+        let stored = {};
+        try { stored = JSON.parse(localStorage.getItem(EN_CACHE) || '{}'); } catch (e) { stored = {}; }
+        Object.keys(stored).forEach((k) => { titleCache.set(k, stored[k]); });
+        setEnTitles((prev) => Object.assign({}, stored, prev));
         (async () => {
-          const map = {};
-          const items = tv.slice(0, 30);
+          const items = (tv || []).concat(movies || []);
           for (const it of items) {
-            if (titleCache.has(it.id)) { map[it.id] = titleCache.get(it.id); continue; }
+            if (cancelled) return;
+            if (titleCache.has(it.id)) continue;
             const al = await altScore(it.orig || it.title);
-            if (al && al.en) { titleCache.set(it.id, al.en); map[it.id] = al.en; }
+            if (al && al.en) {
+              titleCache.set(it.id, al.en);
+              stored[it.id] = al.en;
+              try { localStorage.setItem(EN_CACHE, JSON.stringify(stored)); } catch (e) {}
+              if (!cancelled) setEnTitles((prev) => Object.assign({}, prev, { [it.id]: al.en }));
+            }
+            await new Promise((r) => setTimeout(r, 250));
           }
-          if (!cancelled) setEnTitles((prev) => Object.assign({}, prev, map));
         })();
         return () => { cancelled = true; };
-      }, [lang, tv]);
+      }, [lang, tv, movies]);
 
       const source = tab === 'tv' ? tv || [] : movies || [];
       const rows = useMemo(() => {
