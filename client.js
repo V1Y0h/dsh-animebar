@@ -269,6 +269,7 @@ window.__ModuleLoader__.load({
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const data = await res.json();
           setTags(Array.isArray(data.tags) ? data.tags : []);
+          setSeedSlugs(Array.isArray(data.seedSlugs) ? data.seedSlugs : []);
         } catch (e) {
           setToast(t('读取标签失败', 'Cannot load tags', 'タグ取得に失敗') + ': ' + String(e.message || e));
         }
@@ -276,6 +277,7 @@ window.__ModuleLoader__.load({
 
       const [newTag, setNewTag] = useState({ slug: '', zh: '', en: '', ja: '' });
       const [manage, setManage] = useState(false);
+      const [seedSlugs, setSeedSlugs] = useState([]);
 
       const addSlug = async (kind) => {
         const slug = newTag.slug.trim().toLowerCase();
@@ -452,6 +454,61 @@ window.__ModuleLoader__.load({
         }
       };
 
+      // 标签管理独立于记录条目：不再依赖某条记录是否展开
+      const manageView = () => {
+        const custom = tags.filter((x) => seedSlugs.indexOf(x.slug) < 0);
+        return h('div', { style: { padding: '8px 12px', borderBottom: '1px solid #0f172a' } },
+          h('div', { style: S.label }, t('新增标签（slug + 三语名）', 'New tag (slug + labels)', '新規タグ')),
+          h('input', {
+            value: newTag.slug,
+            placeholder: 'hand_drawn_fx',
+            onChange: (e) => setNewTag(Object.assign({}, newTag, { slug: e.target.value })),
+            style: Object.assign({}, S.field, { marginBottom: 4 }),
+          }),
+          h('div', { style: { display: 'flex', gap: 4, marginBottom: 4 } },
+            h('input', {
+              value: newTag.zh,
+              placeholder: t('中文名', 'Chinese', '中国語'),
+              onChange: (e) => setNewTag(Object.assign({}, newTag, { zh: e.target.value })),
+              style: Object.assign({}, S.field, { flex: 1, minWidth: 0 }),
+            }),
+            h('input', {
+              value: newTag.en,
+              placeholder: t('英文名', 'English', '英語'),
+              onChange: (e) => setNewTag(Object.assign({}, newTag, { en: e.target.value })),
+              style: Object.assign({}, S.field, { flex: 1, minWidth: 0 }),
+            }),
+            h('input', {
+              value: newTag.ja,
+              placeholder: t('日文名', 'Japanese', '日本語'),
+              onChange: (e) => setNewTag(Object.assign({}, newTag, { ja: e.target.value })),
+              style: Object.assign({}, S.field, { flex: 1, minWidth: 0 }),
+            }),
+          ),
+          h('div', { style: { display: 'flex', gap: 4, marginBottom: 8 } },
+            h('button', { type: 'button', style: S.act, onClick: () => addSlug('phenomenon') },
+              t('加为现象', 'As observed', '現象に')),
+            h('button', { type: 'button', style: S.act, onClick: () => addSlug('speculation') },
+              t('加为推测', 'As speculation', '推測に')),
+          ),
+          h('div', { style: S.label }, t('自建标签（可删除）', 'Custom tags (deletable)', '自作タグ（削除可）')),
+          custom.length === 0
+            ? h('div', { style: { fontSize: 11, color: '#64748b', marginBottom: 4 } },
+                t('还没有自建标签', 'None yet', 'まだありません'))
+            : h('div', { style: { maxHeight: 132, overflowY: 'auto', marginBottom: 4 } },
+                custom.map((tag) =>
+                  h('div', { key: 'mg-' + tag.slug, style: { display: 'flex', gap: 6, alignItems: 'center', padding: '2px 0' } },
+                    h('span', { style: { flex: 1, minWidth: 0, fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+                      labelOf(tag) + '  ' + tag.slug),
+                    h('button', { type: 'button', style: S.act, onClick: () => removeTag(tag.slug) },
+                      t('删除', 'Delete', '削除')),
+                  )),
+              ),
+          h('div', { style: { fontSize: 10, color: '#475569' } },
+            seedSlugs.length + t(' 个内置标签只读，不能删除', ' built-in tags are read-only', ' 個の内蔵タグは削除できません')),
+        );
+      };
+
       const triageView = () => {
         if (captures === null) {
           return h('div', { style: S.status }, t('正在读取…', 'Loading…', '読み込み中…'));
@@ -464,9 +521,12 @@ window.__ModuleLoader__.load({
           h('div', { style: { display: 'flex', gap: 6, padding: '8px 12px 0', alignItems: 'center' } },
             h('span', { style: { flex: 1, fontSize: 11, color: '#64748b' } },
               captures.length + t(' 条捕获', ' captures', ' 件')),
+            h('button', { type: 'button', style: S.act, onClick: () => setManage((v) => !v) },
+              manage ? t('完成', 'Done', '完了') : t('管理标签', 'Manage tags', 'タグ管理')),
             h('button', { type: 'button', style: S.act, onClick: exportDraft },
               t('导出草稿', 'Export draft', '下書きを書き出す')),
           ),
+          manage ? manageView() : null,
           h('div', { style: S.list },
             captures.map((item) => {
             const c = item.capture || {};
@@ -504,50 +564,6 @@ window.__ModuleLoader__.load({
                           onClick: () => toggleTriTag('speculation', tag.slug),
                         }, labelOf(tag))),
                     ),
-                    h('div', { style: S.label }, t('新增标签（slug + 三语名）', 'New tag (slug + labels)', '新規タグ')),
-                    h('input', {
-                      value: newTag.slug,
-                      placeholder: 'hand_drawn_fx',
-                      onChange: (e) => setNewTag(Object.assign({}, newTag, { slug: e.target.value })),
-                      style: Object.assign({}, S.field, { marginBottom: 4 }),
-                    }),
-                    h('div', { style: { display: 'flex', gap: 4, marginBottom: 4 } },
-                      h('input', {
-                        value: newTag.zh,
-                        placeholder: t('中文名', 'Chinese', '中国語'),
-                        onChange: (e) => setNewTag(Object.assign({}, newTag, { zh: e.target.value })),
-                        style: Object.assign({}, S.field, { flex: 1, minWidth: 0 }),
-                      }),
-                      h('input', {
-                        value: newTag.en,
-                        placeholder: t('英文名', 'English', '英語'),
-                        onChange: (e) => setNewTag(Object.assign({}, newTag, { en: e.target.value })),
-                        style: Object.assign({}, S.field, { flex: 1, minWidth: 0 }),
-                      }),
-                      h('input', {
-                        value: newTag.ja,
-                        placeholder: t('日文名', 'Japanese', '日本語'),
-                        onChange: (e) => setNewTag(Object.assign({}, newTag, { ja: e.target.value })),
-                        style: Object.assign({}, S.field, { flex: 1, minWidth: 0 }),
-                      }),
-                    ),
-                    h('div', { style: { display: 'flex', gap: 4, marginBottom: 4 } },
-                      h('button', { type: 'button', style: S.act, onClick: () => addSlug('phenomenon') }, t('加为现象', 'As observed', '現象に')),
-                      h('button', { type: 'button', style: S.act, onClick: () => addSlug('speculation') }, t('加为推测', 'As speculation', '推測に')),
-                      h('button', { type: 'button', style: S.act, onClick: () => setManage((v) => !v) },
-                        manage ? t('完成', 'Done', '完了') : t('管理标签', 'Manage', '管理')),
-                    ),
-                    manage
-                      ? h('div', { style: { marginBottom: 4, maxHeight: 160, overflowY: 'auto' } },
-                          tags.map((tag) =>
-                            h('div', { key: 'mg-' + tag.slug, style: { display: 'flex', gap: 6, alignItems: 'center', padding: '2px 0' } },
-                              h('span', { style: { flex: 1, minWidth: 0, fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
-                                labelOf(tag) + '  ' + tag.slug),
-                              h('button', { type: 'button', style: S.act, onClick: () => removeTag(tag.slug) },
-                                t('删除', 'Delete', '削除')),
-                            )),
-                        )
-                      : null,
                     h('div', { style: S.label }, t('如果是我', 'What I would do', '自分なら')),
                     h('textarea', {
                       value: tri.my_take,

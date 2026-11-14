@@ -6,7 +6,7 @@
 // 存储：~/Library/Application Support/AnimeBar/tags.json
 // 文件不存在时返回内置种子，不落盘（读操作不该有副作用）。
 
-import { readFile, writeFile, rename } from "node:fs/promises";
+import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { DEFAULT_DIR } from "./captures.js";
 
@@ -49,6 +49,9 @@ export const SEED_TAGS = [
 
 export const KINDS = ["phenomenon", "speculation", "note"];
 
+// 内置标签只读：允许用户调整自己的标签，但不让人把一套通用词表删空
+export const SEED_SLUGS = new Set(SEED_TAGS.map((t) => t.slug));
+
 const SLUG_PATTERN = /^[a-z][a-z0-9_]{1,39}$/;
 
 export function isValidSlug(slug) {
@@ -67,7 +70,9 @@ function mergeSeeds(tags, seedVersion) {
 }
 
 async function writeRegistry(tags, target) {
-  const path = join(target || DEFAULT_DIR, TAGS_FILE);
+  const dir = target || DEFAULT_DIR;
+  await mkdir(dir, { recursive: true });
+  const path = join(dir, TAGS_FILE);
   const tmp = `${path}.tmp`;
   await writeFile(
     tmp,
@@ -83,7 +88,7 @@ export async function readTags(dir) {
   try {
     text = await readFile(join(target, TAGS_FILE), "utf8");
   } catch {
-    return { source: "seed", seed_version: SEED_VERSION, tags: SEED_TAGS };
+    return { source: "seed", seed_version: SEED_VERSION, seedSlugs: Array.from(SEED_SLUGS), tags: SEED_TAGS };
   }
   try {
     const parsed = JSON.parse(text);
@@ -91,6 +96,7 @@ export async function readTags(dir) {
     return {
       source: TAGS_FILE,
       seed_version: parsed.seed_version || 1,
+      seedSlugs: Array.from(SEED_SLUGS),
       tags: mergeSeeds(raw, parsed.seed_version),
     };
   } catch {
@@ -130,6 +136,9 @@ export async function addTag(input, dir) {
 export async function deleteTag(slug, dir) {
   const key = typeof slug === "string" ? slug.trim().toLowerCase() : "";
   if (!key) throw new Error("缺少 slug");
+  if (SEED_SLUGS.has(key)) {
+    throw new Error("内置标签不能删除");
+  }
   const current = await readTags(dir);
   const tags = current.tags.filter((x) => x && x.slug !== key);
   if (tags.length === current.tags.length) {
