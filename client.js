@@ -279,6 +279,7 @@ window.__ModuleLoader__.load({
       const [manage, setManage] = useState(false);
       const [seedSlugs, setSeedSlugs] = useState([]);
       const [pendingDelete, setPendingDelete] = useState('');
+      const [dimsOpen, setDimsOpen] = useState({});
 
       const addSlug = async (kind) => {
         const slug = newTag.slug.trim().toLowerCase();
@@ -574,6 +575,33 @@ window.__ModuleLoader__.load({
             onClick: () => toggleNoteTag(n, 'speculations', tag),
           }, ttag(tag))),
         ),
+        h('button', {
+          type: 'button',
+          style: Object.assign({}, S.act, { marginTop: 6 }),
+          onClick: () => setDimsOpen((m) => Object.assign({}, m, { [n.id]: !m[n.id] })),
+        }, (dimsOpen[n.id] ? '▾ ' : '▸ ') + t('更多（维度）', 'More (dimensions)', 'その他（評価軸）')),
+        dimsOpen[n.id]
+          ? h('div', { style: { borderLeft: '2px solid #1e293b', paddingLeft: 8, marginTop: 4 } },
+              [['art', t('作画', 'sakuga', '作画')], ['staging', t('演出', 'direction', '演出')], ['sound', t('声音', 'sound', '音響')]]
+                .map(([facet, label]) => h('div', { key: 'dim-' + facet },
+                  h('div', { style: S.label }, label),
+                  h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4 } },
+                    tags.filter((x) => x.kind === 'note' && x.facet === facet).map((tag) => {
+                      const zh = (tag.label && tag.label.zh) || tag.slug;
+                      const on = (n.dims || {})[facet] === zh;
+                      return h('button', {
+                        key: 'd-' + facet + tag.slug,
+                        type: 'button',
+                        style: Object.assign({}, S.chip, on ? S.chipOn : null),
+                        onClick: () => updateNote(n.id, {
+                          dims: Object.assign({}, n.dims || {}, { [facet]: on ? '' : zh }),
+                        }),
+                      }, labelOf(tag));
+                    }),
+                  ),
+                )),
+            )
+          : null,
         h('div', { style: S.label }, t('如果是我', 'What I would do', '自分なら')),
         h('textarea', {
           value: n.reflection,
