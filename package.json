@@ -1,8 +1,8 @@
 {
   "name": "dsh-animebar",
-  "version": "0.6.5",
+  "version": "0.7.0",
   "type": "module",
-  "description": "Anime airing board for DeepSeek Harness — today's lineup from Bangumi.",
+  "description": "Anime airing board and capture triage for DeepSeek Harness — today's lineup from Bangumi, plus local capture records from IINA.",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -12,6 +12,9 @@
   "files": [
     "index.js",
     "client.js",
+    "captures.js",
+    "triage.js",
+    "tags.js",
     "cordis.patch.yml",
     "locale/*.json",
     "docs",

@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "AnimeBar",
-    "description": "Shows today's anime lineup from Bangumi and returns it as a ranked list.",
+    "description": "Shows the Bangumi lineup, and reviews captures recorded from IINA — all stored locally.",
     "detail": "docs/DETAIL.md"
   }
 }

@@ -23,6 +23,25 @@ dsh plugin --profile desktop add dsh-animebar
 
 想看剧场版就说「最近有什么剧场版动画」，工具会切换到 `movie` 模式翻页抓取。
 
+## 捕获与复盘
+
+需要另外安装 [AnimeBar.app](https://github.com/V1Y0h/AnimeBar)。在 IINA 里播放时按 ⌃⌥K，
+App 会记下当前时间码并在屏幕上给出确认；之后在本插件面板的「记录」页逐条复盘。
+
+工具 `anime_captures` 只返回公开字段：时间码、来源、片名、集数、现象标签。
+`my_take`（如果是我）、`speculations`（推测）、`evidence`（证据）属于私人内容，
+不会出现在工具返回值里，因此不会进入模型上下文。
+
+数据位置：`~/Library/Application Support/AnimeBar/`
+
+| 文件 | 写入方 |
+| --- | --- |
+| `creation-log.jsonl` | AnimeBar.app |
+| `triage.jsonl` | 本插件 |
+| `triage-mac.jsonl` | AnimeBar.app |
+| `tags.json` | 本插件（标签注册表） |
+| `capture-deletes*.jsonl` | 删除墓碑 |
+
 ## 配置
 
 | 字段 | 默认 | 说明 |

@@ -58,6 +58,27 @@ bundle 那一行支持 `config`：
 
 插件在请求时调用 `api.bgm.tv`，不存任何东西、不做缓存、不分发任何番剧画面或内容。离开你机器的只有你查询的番名。
 
+### 捕获与复盘
+
+配合 [AnimeBar.app](https://github.com/V1Y0h/AnimeBar) 使用：在 IINA 里按 ⌃⌥K 记下当前时间码，
+本插件把这些记录读出来，供你在面板里复盘。
+
+- 工具 `anime_captures` — 按时间倒序列出捕获，只返回公开字段（时间码、来源、片名、集数、现象标签）
+- 面板「记录」页 — 捕获与手记混排，补集数、标签、维度与反思，可按季度导出复盘草稿
+- 标签是英文 slug + 中日英三语名，内置 25 条，可自建；自建的能删，内置的不能
+
+数据全在本地 `~/Library/Application Support/AnimeBar/`：
+
+| 文件 | 谁写 | 内容 |
+| --- | --- | --- |
+| `creation-log.jsonl` | AnimeBar.app | 捕获 |
+| `triage.jsonl` | 本插件 | 复盘 |
+| `triage-mac.jsonl` | AnimeBar.app | Mac 端复盘 |
+
+两个复盘文件按时间戳合并（后写覆盖）。**`my_take`、`speculations`、`evidence`
+属于私人内容，永远不会出现在工具返回值里**，因此也不会进入模型上下文——
+它们只在面板保存这条记录时落盘。
+
 ### 限制
 
 - 只覆盖 Bangumi 收录的作品，冷门和独立动画经常缺失。
@@ -107,6 +128,31 @@ Or point **Plugins → Add plugin** at a local checkout. Restart DeepSeek Harnes
 ### Data and privacy
 
 The plugin calls `api.bgm.tv` at request time. It stores nothing, caches nothing, and ships no artwork or episode content.
+
+### Captures and triage
+
+Works together with [AnimeBar.app](https://github.com/V1Y0h/AnimeBar): press ⌃⌥K in IINA to
+mark the current timecode, then review these captures in the panel.
+
+- Tool `anime_captures` — lists captures newest first, public fields only (timecode, source,
+  title, episode, observed phenomena)
+- Records tab — captures and free-form notes share one list; add episode, tags, dimensions
+  and reflection; export a season draft
+
+Tags are English slugs with zh/en/ja labels: 25 built in, and custom ones can be added.
+Custom tags are deletable, built-in ones are not.
+
+Everything stays local under `~/Library/Application Support/AnimeBar/`:
+
+| File | Written by | Contents |
+| --- | --- | --- |
+| `creation-log.jsonl` | AnimeBar.app | captures |
+| `triage.jsonl` | this plugin | triage |
+| `triage-mac.jsonl` | AnimeBar.app | triage from the Mac app |
+
+The two triage files are merged by timestamp (last write wins). **`my_take`,
+`speculations` and `evidence` are private and never appear in tool results**, so they never
+reach the model context — they are written only when the panel saves that record.
 
 ### Notes for plugin authors
 
