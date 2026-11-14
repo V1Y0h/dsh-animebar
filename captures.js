@@ -23,6 +23,24 @@ export const CAPTURE_FILE = "creation-log.jsonl";
 export const TRIAGE_FILE = "triage.jsonl";
 // 删除墓碑：DSH 自己写的文件，永远不去改 Mac 的 creation-log.jsonl
 export const DELETES_FILE = "capture-deletes.jsonl";
+// Mac 版也能复盘，写自己的文件；两边按时间戳后写覆盖（LWW）合并
+export const TRIAGE_MAC_FILE = "triage-mac.jsonl";
+
+// 把两个 triage 文件的行合成「每条捕获最终是否复盘、用哪条记录」
+function mergeTriageRows(rows) {
+  const latest = new Map();
+  for (const row of rows) {
+    if (!row || !row.note_id) continue;
+    const ts = Date.parse(row.triaged_at || row.cleared_at || "") || 0;
+    const current = latest.get(row.note_id);
+    if (!current || ts >= current.ts) latest.set(row.note_id, { ts, row });
+  }
+  const out = new Map();
+  for (const [id, entry] of latest) {
+    out.set(id, entry.row.cleared === true ? null : entry.row);
+  }
+  return out;
+}
 
 // 允许出现在工具返回值里的字段（public-safe）
 const PUBLIC_FIELDS = [
@@ -80,16 +98,16 @@ export async function readCaptures(options = {}) {
 
   const captureRes = await readJSONL(join(dir, CAPTURE_FILE));
   const triageRes = await readJSONL(join(dir, TRIAGE_FILE));
+  const triageMacRes = await readJSONL(join(dir, TRIAGE_MAC_FILE));
   const deleteRes = await readJSONL(join(dir, DELETES_FILE));
   const deletedIDs = new Set(
     deleteRes.rows.map((row) => row && row.note_id).filter(Boolean),
   );
 
+  const merged = mergeTriageRows(triageRes.rows.concat(triageMacRes.rows));
   const triageByID = new Map();
-  for (const row of triageRes.rows) {
-    if (!row || !row.note_id) continue;
-    if (row.cleared === true) triageByID.delete(row.note_id);
-    else triageByID.set(row.note_id, row);
+  for (const [id, row] of merged) {
+    if (row) triageByID.set(id, row);
   }
 
   let items = captureRes.rows
@@ -114,7 +132,7 @@ export async function readCaptures(options = {}) {
     returned: items.length,
     missing: {
       capture: captureRes.missing ? CAPTURE_FILE : null,
-      triage: triageRes.missing ? TRIAGE_FILE : null,
+      triage: triageRes.missing && triageMacRes.missing ? TRIAGE_FILE : null,
     },
     badLines: (captureRes.bad || 0) + (triageRes.bad || 0),
     items,
@@ -143,16 +161,16 @@ export async function readAllRaw(options = {}) {
   const dir = options.dir || DEFAULT_DIR;
   const cap = await readJSONL(join(dir, CAPTURE_FILE));
   const tri = await readJSONL(join(dir, TRIAGE_FILE));
+  const triMac = await readJSONL(join(dir, TRIAGE_MAC_FILE));
   const del = await readJSONL(join(dir, DELETES_FILE));
   const deletedIDs = new Set(
     del.rows.map((row) => row && row.note_id).filter(Boolean),
   );
 
+  const mergedTriage = mergeTriageRows(tri.rows.concat(triMac.rows));
   const triageByID = new Map();
-  for (const row of tri.rows) {
-    if (!row || !row.note_id) continue;
-    if (row.cleared === true) triageByID.delete(row.note_id);
-    else triageByID.set(row.note_id, row);
+  for (const [id, row] of mergedTriage) {
+    if (row) triageByID.set(id, row);
   }
 
   const items = cap.rows
