@@ -98,7 +98,9 @@ export async function readCaptures(options = {}) {
   return {
     dir,
     total: captureRes.rows.length,
-    triaged: triageByID.size,
+    // 只数「有对应捕获」的复盘：triage.jsonl 里可能有孤儿行
+    // （例如手工 POST 的测试 note_id），算进来会虚高
+    triaged: items.filter((i) => i.triaged).length,
     returned: items.length,
     missing: {
       capture: captureRes.missing ? CAPTURE_FILE : null,
