@@ -1,6 +1,12 @@
 # dsh-animebar
 
-给 DeepSeek Harness 的看番工具：问一句「今天有什么番」，得到按评分排好的清单。
+给 DeepSeek Harness 的看番工具，两件事：
+
+- **查番表** — 问一句「今天有什么番」，得到按评分排好的清单
+- **复盘捕获** — 配合 [AnimeBar.app](https://github.com/V1Y0h/AnimeBar)，在 IINA 里按 ⌃⌥K 记下时间码，
+  回到面板逐条补标签、维度与反思，可按季度导出草稿
+
+数据全部留在本地，私人反思不会进入模型上下文。
 
 [中文](#中文) · [English](#english)
 

@@ -43,7 +43,10 @@
     "deepseek-harness",
     "anime",
     "bangumi",
-    "anime-tracker"
+    "anime-tracker",
+    "anime-triage",
+    "capture",
+    "iina"
   ],
   "repository": {
     "type": "git",
