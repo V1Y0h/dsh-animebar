@@ -25,6 +25,7 @@ export const TRIAGE_FILE = "triage.jsonl";
 export const DELETES_FILE = "capture-deletes.jsonl";
 // Mac 版也能复盘，写自己的文件；两边按时间戳后写覆盖（LWW）合并
 export const TRIAGE_MAC_FILE = "triage-mac.jsonl";
+export const DELETES_MAC_FILE = "capture-deletes-mac.jsonl";
 
 // 把两个 triage 文件的行合成「每条捕获最终是否复盘、用哪条记录」
 function mergeTriageRows(rows) {
@@ -100,8 +101,11 @@ export async function readCaptures(options = {}) {
   const triageRes = await readJSONL(join(dir, TRIAGE_FILE));
   const triageMacRes = await readJSONL(join(dir, TRIAGE_MAC_FILE));
   const deleteRes = await readJSONL(join(dir, DELETES_FILE));
+  const deleteMacRes = await readJSONL(join(dir, DELETES_MAC_FILE));
   const deletedIDs = new Set(
-    deleteRes.rows.map((row) => row && row.note_id).filter(Boolean),
+    deleteRes.rows.concat(deleteMacRes.rows)
+      .map((row) => row && row.note_id)
+      .filter(Boolean),
   );
 
   const merged = mergeTriageRows(triageRes.rows.concat(triageMacRes.rows));
@@ -163,8 +167,11 @@ export async function readAllRaw(options = {}) {
   const tri = await readJSONL(join(dir, TRIAGE_FILE));
   const triMac = await readJSONL(join(dir, TRIAGE_MAC_FILE));
   const del = await readJSONL(join(dir, DELETES_FILE));
+  const delMac = await readJSONL(join(dir, DELETES_MAC_FILE));
   const deletedIDs = new Set(
-    del.rows.map((row) => row && row.note_id).filter(Boolean),
+    del.rows.concat(delMac.rows)
+      .map((row) => row && row.note_id)
+      .filter(Boolean),
   );
 
   const mergedTriage = mergeTriageRows(tri.rows.concat(triMac.rows));
