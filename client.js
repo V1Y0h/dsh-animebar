@@ -523,6 +523,65 @@ window.__ModuleLoader__.load({
         }
       };
 
+      const addNote = () => {
+        const entry = {
+          id: String(Date.now()) + Math.random().toString(16).slice(2, 6),
+          title: '', phenomena: [], speculations: [], evidence: '', reflection: '', dims: {},
+          createdAt: new Date().toISOString(),
+        };
+        const next = [entry].concat(notes);
+        setNotes(next);
+        saveNotes(next);
+      };
+
+      const updateNote = (id, patch) => {
+        const next = notes.map((n) => (n.id === id ? Object.assign({}, n, patch) : n));
+        setNotes(next);
+        saveNotes(next);
+      };
+
+      const toggleNoteTag = (n, field, value) => {
+        const cur = n[field] || [];
+        updateNote(n.id, { [field]: cur.includes(value) ? cur.filter((x) => x !== value) : cur.concat(value) });
+      };
+
+      const noteCard = (n) => h('div', { key: 'note-' + n.id, style: S.noteRow },
+        h('div', { style: { display: 'flex', gap: 6, alignItems: 'center' } },
+          h('span', { style: { fontSize: 10, color: '#64748b', border: '1px solid #1e293b', borderRadius: 999, padding: '0 6px' } },
+            t('手记', 'Note', '手記')),
+          h('input', {
+            value: n.title,
+            placeholder: t('作品名', 'Title', '作品名'),
+            onChange: (e) => updateNote(n.id, { title: e.target.value }),
+            style: Object.assign({}, S.field, { flex: 1, minWidth: 0 }),
+          }),
+          h('button', { type: 'button', style: S.act, onClick: () => removeNote(n.id) },
+            t('删除', 'Delete', '削除')),
+        ),
+        h('div', { style: S.label }, t('现象', 'Observed', '現象')),
+        h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4 } },
+          PHENOMENA.map((tag) => h('button', {
+            key: 'np-' + tag, type: 'button',
+            style: Object.assign({}, S.chip, (n.phenomena || []).includes(tag) ? S.chipOn : null),
+            onClick: () => toggleNoteTag(n, 'phenomena', tag),
+          }, ttag(tag))),
+        ),
+        h('div', { style: S.label }, t('推测', 'Speculation', '推測')),
+        h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4 } },
+          SPECULATIONS.map((tag) => h('button', {
+            key: 'ns-' + tag, type: 'button',
+            style: Object.assign({}, S.chip, (n.speculations || []).includes(tag) ? S.chipOn : null),
+            onClick: () => toggleNoteTag(n, 'speculations', tag),
+          }, ttag(tag))),
+        ),
+        h('div', { style: S.label }, t('如果是我', 'What I would do', '自分なら')),
+        h('textarea', {
+          value: n.reflection,
+          onChange: (e) => updateNote(n.id, { reflection: e.target.value }),
+          style: S.ta,
+        }),
+      );
+
       // 标签管理独立于记录条目：不再依赖某条记录是否展开
       const manageView = () => {
         const custom = tags.filter((x) => seedSlugs.indexOf(x.slug) < 0);
@@ -582,16 +641,18 @@ window.__ModuleLoader__.load({
         if (captures === null) {
           return h('div', { style: S.status }, t('正在读取…', 'Loading…', '読み込み中…'));
         }
-        if (captures.length === 0) {
+        if (captures.length === 0 && notes.length === 0) {
           return h('div', { style: S.status },
-            t('还没有捕获。在 IINA 里播放时按 ⌃⌥K 试试。', 'No captures yet. Press ⌃⌥K while playing in IINA.', 'まだありません。IINA で ⌃⌥K。'));
+            t('还没有记录。播放时按 ⌃⌥K，或点「＋手记」。', 'No records yet.', 'まだありません。'));
         }
         return h('div', null,
           h('div', { style: { fontSize: 12, fontWeight: 600, padding: '8px 12px 0', color: '#e2e8f0' } },
-            t('待处理捕获', 'Pending captures', '未処理のキャプチャ')),
+            t('记录', 'Records', '記録')),
           h('div', { style: { display: 'flex', gap: 6, padding: '6px 12px 0', alignItems: 'center' } },
             h('span', { style: { flex: 1, fontSize: 11, color: '#64748b' } },
-              captures.length + t(' 条捕获', ' captures', ' 件')),
+              (captures.length + notes.length) + t(' 条记录', ' records', ' 件')),
+            h('button', { type: 'button', style: S.act, onClick: addNote },
+              t('＋手记', '+ Note', '＋手記')),
             h('button', { type: 'button', style: S.act, onClick: () => setManage((v) => !v) },
               manage ? t('完成', 'Done', '完了') : t('管理标签', 'Manage tags', 'タグ管理')),
             h('button', { type: 'button', style: S.act, onClick: exportDraft },
@@ -674,7 +735,7 @@ window.__ModuleLoader__.load({
                   )
                 : null,
               );
-            }),
+            }).concat(notes.map((n) => noteCard(n))),
           ),
         );
       };
@@ -918,7 +979,7 @@ window.__ModuleLoader__.load({
           ),
 
           tab === 'notes'
-            ? h('div', null, triageView(), notesView())
+            ? triageView()
             : error
               ? h('div', { style: S.status }, error)
             : source.length === 0
