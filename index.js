@@ -1,7 +1,7 @@
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { readCaptures, readAllRaw } from "./captures.js";
 import { buildTriageRecord, appendTriageRecord } from "./triage.js";
-import { readTags, addTag } from "./tags.js";
+import { readTags, addTag, deleteTag } from "./tags.js";
 
 export const name = "animebar";
 export const inject = ["tools"];
@@ -164,12 +164,17 @@ export function apply(ctx, config) {
     // 标签注册表：面板只从 slug 里选，不自由输入
     connCtx.connection.fetch.register({
       path: "/api/animebar/tags",
-      methods: ["GET", "POST"],
+      methods: ["GET", "POST", "DELETE"],
       requestBody: "buffered",
       fetch: async (request) => {
         try {
           if (request.method === "GET") {
             return json(200, await readTags(config?.dataDir || undefined));
+          }
+          if (request.method === "DELETE") {
+            const slug = new URL(request.url, "http://localhost").searchParams.get("slug");
+            const result = await deleteTag(slug, config?.dataDir || undefined);
+            return json(200, { ok: true, ...result });
           }
           const body = await request.json();
           const result = await addTag(body, config?.dataDir || undefined);

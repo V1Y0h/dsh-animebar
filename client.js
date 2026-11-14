@@ -274,26 +274,46 @@ window.__ModuleLoader__.load({
         }
       }, [lang]);
 
-      const [newSlug, setNewSlug] = useState('');
+      const [newTag, setNewTag] = useState({ slug: '', zh: '', en: '', ja: '' });
+      const [manage, setManage] = useState(false);
 
       const addSlug = async (kind) => {
-        const slug = newSlug.trim().toLowerCase();
+        const slug = newTag.slug.trim().toLowerCase();
         if (!slug) return;
+        const label = {};
+        if (newTag.zh.trim()) label.zh = newTag.zh.trim();
+        if (newTag.en.trim()) label.en = newTag.en.trim();
+        if (newTag.ja.trim()) label.ja = newTag.ja.trim();
         try {
           const res = await fetch('/api/animebar/tags', {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ slug, kind }),
+            body: JSON.stringify({ slug, kind, label }),
           });
           const data = await res.json();
           if (!res.ok || !data.ok) throw new Error(data.error || 'HTTP ' + res.status);
           await loadTags();
           toggleTriTag(kind, slug);
-          setNewSlug('');
+          setNewTag({ slug: '', zh: '', en: '', ja: '' });
           setToast(t('已新增标签', 'Tag added', 'タグを追加'));
         } catch (e) {
           setToast(t('新增失败', 'Add failed', '追加に失敗') + ': ' + String(e.message || e));
+        }
+      };
+
+      const removeTag = async (slug) => {
+        try {
+          const res = await fetch('/api/animebar/tags?slug=' + encodeURIComponent(slug), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) throw new Error(data.error || 'HTTP ' + res.status);
+          await loadTags();
+          setToast(t('已删除标签', 'Tag deleted', 'タグを削除'));
+        } catch (e) {
+          setToast(t('删除失败', 'Delete failed', '削除に失敗') + ': ' + String(e.message || e));
         }
       };
 
@@ -484,16 +504,50 @@ window.__ModuleLoader__.load({
                           onClick: () => toggleTriTag('speculation', tag.slug),
                         }, labelOf(tag))),
                     ),
-                    h('div', { style: { display: 'flex', gap: 4, marginTop: 2, marginBottom: 4 } },
+                    h('div', { style: S.label }, t('新增标签（slug + 三语名）', 'New tag (slug + labels)', '新規タグ')),
+                    h('input', {
+                      value: newTag.slug,
+                      placeholder: 'hand_drawn_fx',
+                      onChange: (e) => setNewTag(Object.assign({}, newTag, { slug: e.target.value })),
+                      style: Object.assign({}, S.field, { marginBottom: 4 }),
+                    }),
+                    h('div', { style: { display: 'flex', gap: 4, marginBottom: 4 } },
                       h('input', {
-                        value: newSlug,
-                        placeholder: t('新增标签 slug（小写英文）', 'New tag slug', '新規タグ slug'),
-                        onChange: (e) => setNewSlug(e.target.value),
+                        value: newTag.zh,
+                        placeholder: t('中文名', 'Chinese', '中国語'),
+                        onChange: (e) => setNewTag(Object.assign({}, newTag, { zh: e.target.value })),
                         style: Object.assign({}, S.field, { flex: 1, minWidth: 0 }),
                       }),
-                      h('button', { type: 'button', style: S.act, onClick: () => addSlug('phenomenon') }, t('加现象', 'Obs.', '現象')),
-                      h('button', { type: 'button', style: S.act, onClick: () => addSlug('speculation') }, t('加推测', 'Spec.', '推測')),
+                      h('input', {
+                        value: newTag.en,
+                        placeholder: t('英文名', 'English', '英語'),
+                        onChange: (e) => setNewTag(Object.assign({}, newTag, { en: e.target.value })),
+                        style: Object.assign({}, S.field, { flex: 1, minWidth: 0 }),
+                      }),
+                      h('input', {
+                        value: newTag.ja,
+                        placeholder: t('日文名', 'Japanese', '日本語'),
+                        onChange: (e) => setNewTag(Object.assign({}, newTag, { ja: e.target.value })),
+                        style: Object.assign({}, S.field, { flex: 1, minWidth: 0 }),
+                      }),
                     ),
+                    h('div', { style: { display: 'flex', gap: 4, marginBottom: 4 } },
+                      h('button', { type: 'button', style: S.act, onClick: () => addSlug('phenomenon') }, t('加为现象', 'As observed', '現象に')),
+                      h('button', { type: 'button', style: S.act, onClick: () => addSlug('speculation') }, t('加为推测', 'As speculation', '推測に')),
+                      h('button', { type: 'button', style: S.act, onClick: () => setManage((v) => !v) },
+                        manage ? t('完成', 'Done', '完了') : t('管理标签', 'Manage', '管理')),
+                    ),
+                    manage
+                      ? h('div', { style: { marginBottom: 4, maxHeight: 160, overflowY: 'auto' } },
+                          tags.map((tag) =>
+                            h('div', { key: 'mg-' + tag.slug, style: { display: 'flex', gap: 6, alignItems: 'center', padding: '2px 0' } },
+                              h('span', { style: { flex: 1, minWidth: 0, fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+                                labelOf(tag) + '  ' + tag.slug),
+                              h('button', { type: 'button', style: S.act, onClick: () => removeTag(tag.slug) },
+                                t('删除', 'Delete', '削除')),
+                            )),
+                        )
+                      : null,
                     h('div', { style: S.label }, t('如果是我', 'What I would do', '自分なら')),
                     h('textarea', {
                       value: tri.my_take,
