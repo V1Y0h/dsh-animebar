@@ -250,6 +250,138 @@ window.__ModuleLoader__.load({
       const [notes, setNotes] = useState(loadNotes);
       const [draft, setDraft] = useState({ title: '', phenomena: [], speculations: [], evidence: '', reflection: '', dims: {} });
 
+      // ---- 捕获复盘（Triage）----
+      const [captures, setCaptures] = useState(null);
+      const [tri, setTri] = useState({ note_id: '', phenomena: '', speculations: '', my_take: '', evidence: '' });
+
+      const fmtClock = (sec) => {
+        const v = Math.max(0, Math.round(Number(sec) || 0));
+        return String(Math.floor(v / 60)).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0');
+      };
+
+      const loadCaptures = useCallback(async () => {
+        try {
+          const res = await fetch('/api/animebar/captures', { credentials: 'same-origin' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          setCaptures(Array.isArray(data.items) ? data.items : []);
+        } catch (e) {
+          setCaptures([]);
+          setToast(t('读取捕获失败', 'Cannot load captures', '取得に失敗') + ': ' + String(e.message || e));
+        }
+      }, [lang]);
+
+      useEffect(() => {
+        if (open && tab === 'triage' && captures === null) loadCaptures();
+      }, [open, tab, captures, loadCaptures]);
+
+      const openTriage = (item) => {
+        const c = item.capture || {};
+        const tr = item.triage || {};
+        if (tri.note_id === c.note_id) {
+          setTri({ note_id: '', phenomena: '', speculations: '', my_take: '', evidence: '' });
+          return;
+        }
+        setTri({
+          note_id: c.note_id,
+          phenomena: Array.isArray(tr.phenomena) ? tr.phenomena.join(', ') : '',
+          speculations: Array.isArray(tr.speculations)
+            ? tr.speculations.map((s) => (s && s.tag) || '').filter(Boolean).join(', ')
+            : '',
+          my_take: typeof tr.my_take === 'string' ? tr.my_take : '',
+          evidence: Array.isArray(tr.evidence) && tr.evidence[0] && tr.evidence[0].url ? tr.evidence[0].url : '',
+        });
+      };
+
+      const saveTriage = async () => {
+        if (!tri.note_id) return;
+        const split = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);
+        const payload = {
+          note_id: tri.note_id,
+          phenomena: split(tri.phenomena),
+          speculations: split(tri.speculations).map((tag) => ({ tag })),
+          my_take: tri.my_take,
+          evidence: tri.evidence.trim() ? [{ type: 'url', url: tri.evidence.trim() }] : [],
+        };
+        try {
+          const res = await fetch('/api/animebar/triage', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) throw new Error(data.error || 'HTTP ' + res.status);
+          setToast(t('已保存复盘', 'Triage saved', '保存しました'));
+          setTri({ note_id: '', phenomena: '', speculations: '', my_take: '', evidence: '' });
+          await loadCaptures();
+        } catch (e) {
+          setToast(t('保存失败', 'Save failed', '保存に失敗') + ': ' + String(e.message || e));
+        }
+      };
+
+      const triageView = () => {
+        if (captures === null) {
+          return h('div', { style: S.status }, t('正在读取…', 'Loading…', '読み込み中…'));
+        }
+        if (captures.length === 0) {
+          return h('div', { style: S.status },
+            t('还没有捕获。在 IINA 里播放时按 ⌃⌥K 试试。', 'No captures yet. Press ⌃⌥K while playing in IINA.', 'まだありません。IINA で ⌃⌥K。'));
+        }
+        return h('div', { style: S.list },
+          captures.map((item) => {
+            const c = item.capture || {};
+            const tr = item.triage;
+            const active = tri.note_id === c.note_id;
+            return h('div', { key: c.note_id, style: S.noteRow },
+              h('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
+                h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+                  fmtClock(c.t_start) + '  ' + (c.title || t('（无片名）', '(untitled)', '（無題）'))),
+                tr ? h('span', { style: S.score }, t('已复盘', 'done', '済')) : null,
+                h('button', { type: 'button', style: S.act, onClick: () => openTriage(item) },
+                  active ? t('收起', 'Close', '閉じる') : t('复盘', 'Triage', '整理')),
+              ),
+              active
+                ? h('div', null,
+                    h('div', { style: S.label }, t('现象（英文 slug，逗号分隔）', 'Phenomena (slugs, comma separated)', '現象')),
+                    h('input', {
+                      value: tri.phenomena,
+                      placeholder: 'still_heavy, art_style_shift',
+                      onChange: (e) => setTri(Object.assign({}, tri, { phenomena: e.target.value })),
+                      style: S.field,
+                    }),
+                    h('div', { style: S.label }, t('推测（英文 slug，逗号分隔）', 'Speculations (slugs, comma separated)', '推測')),
+                    h('input', {
+                      value: tri.speculations,
+                      placeholder: 'outsourcing',
+                      onChange: (e) => setTri(Object.assign({}, tri, { speculations: e.target.value })),
+                      style: S.field,
+                    }),
+                    h('div', { style: S.label }, t('如果是我', 'What I would do', '自分なら')),
+                    h('textarea', {
+                      value: tri.my_take,
+                      onChange: (e) => setTri(Object.assign({}, tri, { my_take: e.target.value })),
+                      style: S.ta,
+                    }),
+                    h('div', { style: S.label }, t('证据链接', 'Evidence URL', '根拠 URL')),
+                    h('input', {
+                      value: tri.evidence,
+                      placeholder: 'https://…',
+                      onChange: (e) => setTri(Object.assign({}, tri, { evidence: e.target.value })),
+                      style: S.field,
+                    }),
+                    h('div', { style: { marginTop: 8 } },
+                      h('button', { type: 'button', style: S.primary, onClick: saveTriage },
+                        t('保存复盘', 'Save triage', '保存')),
+                    ),
+                  )
+                : null,
+            );
+          }),
+        );
+      };
+
+
       const toggleTag = (field, value) => {
         setDraft((d) => {
           const has = d[field].includes(value);
@@ -462,6 +594,7 @@ window.__ModuleLoader__.load({
               h('button', { type: 'button', onClick: () => setTab('tv'), style: Object.assign({}, S.tab, tab === 'tv' ? S.tabOn : null) }, t('新番', 'TV', '新作')),
               h('button', { type: 'button', onClick: () => setTab('movie'), style: Object.assign({}, S.tab, tab === 'movie' ? S.tabOn : null) }, t('剧场版', 'Films', '劇場版')),
               h('button', { type: 'button', onClick: () => setTab('notes'), style: Object.assign({}, S.tab, tab === 'notes' ? S.tabOn : null) }, t('记录', 'Notes', '記録')),
+              h('button', { type: 'button', onClick: () => setTab('triage'), style: Object.assign({}, S.tab, tab === 'triage' ? S.tabOn : null) }, t('复盘', 'Triage', '整理')),
             ),
             ['zh', 'en', 'ja'].map((l) => h('button', {
               key: 'lang-' + l,
@@ -474,7 +607,7 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', title: t('关闭', 'Close', '閉じる'), style: S.icon, onClick: () => setOpen(false) }, '×'),
           ),
 
-          tab === 'notes' ? null : h('div', { style: S.filters },
+          tab === 'notes' || tab === 'triage' ? null : h('div', { style: S.filters },
             tab === 'tv' ? chip(t('全部', 'All', '全て'), wd === 0, () => setWd(0), 'wd0') : null,
             tab === 'tv' ? DAYS.map((d, i) => chip(lang === 'en' ? DAYS_EN[i] : lang === 'ja' ? DAYS_JA[i] : d, wd === i + 1, () => setWd(i + 1), 'wd' + (i + 1))) : null,
             chip(t('按热度', 'Popular', '人気順'), sortKey === 'pop', () => setSortKey('pop'), 'k1'),
@@ -489,6 +622,8 @@ window.__ModuleLoader__.load({
 
           tab === 'notes'
             ? notesView()
+            : tab === 'triage'
+              ? triageView()
             : error
               ? h('div', { style: S.status }, error)
             : source.length === 0

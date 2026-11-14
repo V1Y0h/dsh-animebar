@@ -1,26 +1,6 @@
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { readCaptures } from "./captures.js";
+import { readCaptures, readAllRaw } from "./captures.js";
 import { buildTriageRecord, appendTriageRecord } from "./triage.js";
-
-const MAX_TRIAGE_BODY = 256 * 1024;
-
-function readBody(req, limitBytes = MAX_TRIAGE_BODY) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    let size = 0;
-    req.on("data", (chunk) => {
-      size += chunk.length;
-      if (size > limitBytes) {
-        reject(new Error("请求体过大"));
-        req.destroy();
-        return;
-      }
-      chunks.push(chunk);
-    });
-    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-    req.on("error", reject);
-  });
-}
 
 export const name = "animebar";
 export const inject = ["tools"];
@@ -133,32 +113,51 @@ export function apply(ctx, config) {
     },
   }));
 
-  // 复盘写入走宿主路由，不经过模型：
+  // 复盘写入 / 面板读取走宿主的 exact Fetch 路由，不经过模型：
   // my_take / speculations 属于 private，一旦作为工具参数就会进云端上下文。
-  // 这里用 ctx.inject 而不是写进 inject，是为了在没有 webServer 的 profile 里
+  // 路径是相对 /api 的，实际地址为 /api/animebar/...
+  // 用 ctx.inject 而不是写进 inject，是为了在没有 connection 服务的 profile 里
   // 插件仍能提供 anime_today / anime_captures，而不是整体失活。
-  ctx.inject(["webServer"], (webCtx) => {
-    webCtx.webServer.register({
-      kind: "exact",
-      path: "/animebar/triage",
-      handler: async (req, res) => {
-        if (req.method !== "POST") {
-          res.writeHead(405, { "content-type": "application/json" });
-          res.end(JSON.stringify({ ok: false, error: "只接受 POST" }));
-          return;
-        }
+  ctx.inject(["connection"], (connCtx) => {
+    try {
+      const json = (status, payload) =>
+      new Response(JSON.stringify(payload), {
+        status,
+        headers: { "content-type": "application/json; charset=utf-8" },
+      });
+
+    connCtx.connection.fetch.register({
+      path: "/api/animebar/triage",
+      methods: ["POST"],
+      requestBody: "buffered",
+      fetch: async (request) => {
         try {
-          const raw = await readBody(req);
-          const body = JSON.parse(raw || "{}");
+          const body = await request.json();
           const record = buildTriageRecord(body);
           await appendTriageRecord(record, config?.dataDir || undefined);
-          res.writeHead(200, { "content-type": "application/json" });
-          res.end(JSON.stringify({ ok: true, note_id: record.note_id }));
+          return json(200, { ok: true, note_id: record.note_id });
         } catch (err) {
-          res.writeHead(400, { "content-type": "application/json" });
-          res.end(JSON.stringify({ ok: false, error: String(err?.message || err) }));
+          return json(400, { ok: false, error: String(err?.message || err) });
         }
       },
     });
+
+    // 面板读取用：含 private 字段，供界面回填。不进模型，不要接到工具上。
+    connCtx.connection.fetch.register({
+      path: "/api/animebar/captures",
+      methods: ["GET"],
+      requestBody: "buffered",
+      fetch: async () => {
+        try {
+          return json(200, await readAllRaw({ dir: config?.dataDir || undefined }));
+        } catch (err) {
+          return json(500, { ok: false, error: String(err?.message || err) });
+        }
+      },
+    });
+    } catch (e) {
+      // 注册失败时不要静默：整条复盘写入链路会不可用
+      console.error("animebar: 路由注册失败", e);
+    }
   });
 }

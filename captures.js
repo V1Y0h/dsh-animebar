@@ -107,3 +107,38 @@ export async function readCaptures(options = {}) {
 }
 
 export { PUBLIC_FIELDS, PRIVATE_FIELDS };
+
+// 给面板用的原始视图：包含 private 字段，因为要在界面上回填编辑。
+// 这条路径只走宿主路由，返回值不进模型上下文；
+// 一旦被工具调用就会破坏隐私车道，所以不要把它接到任何 tool 上。
+export async function readAllRaw(options = {}) {
+  const dir = options.dir || DEFAULT_DIR;
+  const cap = await readJSONL(join(dir, CAPTURE_FILE));
+  const tri = await readJSONL(join(dir, TRIAGE_FILE));
+
+  const triageByID = new Map();
+  for (const row of tri.rows) {
+    if (row && row.note_id) triageByID.set(row.note_id, row);
+  }
+
+  const items = cap.rows
+    .filter((row) => row && row.note_id)
+    .map((row) => ({
+      capture: row,
+      triage: triageByID.get(row.note_id) || null,
+    }));
+
+  items.sort((a, b) =>
+    String(b.capture.note_id).localeCompare(String(a.capture.note_id)),
+  );
+
+  return {
+    dir,
+    total: items.length,
+    missing: {
+      capture: cap.missing ? CAPTURE_FILE : null,
+      triage: tri.missing ? TRIAGE_FILE : null,
+    },
+    items,
+  };
+}
