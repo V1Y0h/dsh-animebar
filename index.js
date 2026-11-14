@@ -1,5 +1,5 @@
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { readCaptures, readAllRaw } from "./captures.js";
+import { readCaptures, readAllRaw, appendDeletedCapture } from "./captures.js";
 import { buildTriageRecord, buildClearRecord, appendTriageRecord } from "./triage.js";
 import { readTags, addTag, deleteTag } from "./tags.js";
 
@@ -148,13 +148,18 @@ export function apply(ctx, config) {
     // 面板读取用：含 private 字段，供界面回填。不进模型，不要接到工具上。
     connCtx.connection.fetch.register({
       path: "/api/animebar/captures",
-      methods: ["GET"],
+      methods: ["GET", "DELETE"],
       requestBody: "buffered",
-      fetch: async () => {
+      fetch: async (request) => {
         try {
+          if (request.method === "DELETE") {
+            const noteID = new URL(request.url, "http://localhost").searchParams.get("note_id");
+            await appendDeletedCapture(noteID, config?.dataDir || undefined);
+            return json(200, { ok: true });
+          }
           return json(200, await readAllRaw({ dir: config?.dataDir || undefined }));
         } catch (err) {
-          return json(500, { ok: false, error: String(err?.message || err) });
+          return json(400, { ok: false, error: String(err?.message || err) });
         }
       },
     });

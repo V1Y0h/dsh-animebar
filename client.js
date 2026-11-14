@@ -278,6 +278,7 @@ window.__ModuleLoader__.load({
       const [newTag, setNewTag] = useState({ slug: '', zh: '', en: '', ja: '' });
       const [manage, setManage] = useState(false);
       const [seedSlugs, setSeedSlugs] = useState([]);
+      const [pendingDelete, setPendingDelete] = useState('');
 
       const addSlug = async (kind) => {
         const slug = newTag.slug.trim().toLowerCase();
@@ -349,6 +350,24 @@ window.__ModuleLoader__.load({
         if (open && tab === 'triage' && captures === null) loadCaptures();
         if (open && tab === 'triage' && tags.length === 0) loadTags();
       }, [open, tab, captures, tags.length, loadCaptures, loadTags]);
+
+      const deleteCapture = async (id) => {
+        if (!id) return;
+        try {
+          const res = await fetch('/api/animebar/captures?note_id=' + encodeURIComponent(id), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) throw new Error(data.error || 'HTTP ' + res.status);
+          setPendingDelete('');
+          setTri(EMPTY_TRI);
+          setToast(t('已删除捕获', 'Capture deleted', 'キャプチャを削除'));
+          await loadCaptures();
+        } catch (e) {
+          setToast(t('删除失败', 'Delete failed', '削除に失敗') + ': ' + String(e.message || e));
+        }
+      };
 
       const clearTriage = async (id) => {
         if (!id) return;
@@ -559,6 +578,12 @@ window.__ModuleLoader__.load({
                 tr ? h('span', { style: S.score }, t('已复盘', 'done', '済')) : null,
                 h('button', { type: 'button', style: S.act, onClick: () => openTriage(item) },
                   active ? t('收起', 'Close', '閉じる') : t('复盘', 'Triage', '整理')),
+                h('button', {
+                  type: 'button',
+                  style: S.act,
+                  title: t('删除这条捕获', 'Delete this capture', 'このキャプチャを削除'),
+                  onClick: () => (pendingDelete === c.note_id ? deleteCapture(c.note_id) : setPendingDelete(c.note_id)),
+                }, pendingDelete === c.note_id ? t('确认', 'Sure?', '確認') : t('删', 'Del', '削')),
               ),
               active
                 ? h('div', null,

@@ -8,7 +8,7 @@
 // 隐私车道：my_take / speculations / evidence 属于 private，
 // 永远不进入这个模块的返回值，也就不可能进模型上下文。
 
-import { readFile } from "node:fs/promises";
+import { readFile, appendFile, mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -21,6 +21,8 @@ export const DEFAULT_DIR = join(
 
 export const CAPTURE_FILE = "creation-log.jsonl";
 export const TRIAGE_FILE = "triage.jsonl";
+// 删除墓碑：DSH 自己写的文件，永远不去改 Mac 的 creation-log.jsonl
+export const DELETES_FILE = "capture-deletes.jsonl";
 
 // 允许出现在工具返回值里的字段（public-safe）
 const PUBLIC_FIELDS = [
@@ -78,6 +80,10 @@ export async function readCaptures(options = {}) {
 
   const captureRes = await readJSONL(join(dir, CAPTURE_FILE));
   const triageRes = await readJSONL(join(dir, TRIAGE_FILE));
+  const deleteRes = await readJSONL(join(dir, DELETES_FILE));
+  const deletedIDs = new Set(
+    deleteRes.rows.map((row) => row && row.note_id).filter(Boolean),
+  );
 
   const triageByID = new Map();
   for (const row of triageRes.rows) {
@@ -87,8 +93,10 @@ export async function readCaptures(options = {}) {
   }
 
   let items = captureRes.rows
-    .filter((row) => row.note_id)
+    .filter((row) => row.note_id && !deletedIDs.has(row.note_id))
     .map((row) => publicView(row, triageByID.get(row.note_id)));
+
+  const totalVisible = items.length;
 
   if (only === "untriaged") items = items.filter((i) => !i.triaged);
   else if (only === "triaged") items = items.filter((i) => i.triaged);
@@ -99,7 +107,7 @@ export async function readCaptures(options = {}) {
 
   return {
     dir,
-    total: captureRes.rows.length,
+    total: totalVisible,
     // 只数「有对应捕获」的复盘：triage.jsonl 里可能有孤儿行
     // （例如手工 POST 的测试 note_id），算进来会虚高
     triaged: items.filter((i) => i.triaged).length,
@@ -113,6 +121,19 @@ export async function readCaptures(options = {}) {
   };
 }
 
+// 删除捕获：只追加墓碑，不碰 creation-log.jsonl
+export async function appendDeletedCapture(noteID, dir) {
+  const id = typeof noteID === "string" ? noteID.trim() : "";
+  if (!id) throw new Error("缺少 note_id");
+  const target = dir || DEFAULT_DIR;
+  await mkdir(target, { recursive: true });
+  await appendFile(
+    join(target, DELETES_FILE),
+    JSON.stringify({ note_id: id, deleted_at: new Date().toISOString() }) + "\n",
+    { encoding: "utf8", mode: 0o600 },
+  );
+}
+
 export { PUBLIC_FIELDS, PRIVATE_FIELDS };
 
 // 给面板用的原始视图：包含 private 字段，因为要在界面上回填编辑。
@@ -122,6 +143,10 @@ export async function readAllRaw(options = {}) {
   const dir = options.dir || DEFAULT_DIR;
   const cap = await readJSONL(join(dir, CAPTURE_FILE));
   const tri = await readJSONL(join(dir, TRIAGE_FILE));
+  const del = await readJSONL(join(dir, DELETES_FILE));
+  const deletedIDs = new Set(
+    del.rows.map((row) => row && row.note_id).filter(Boolean),
+  );
 
   const triageByID = new Map();
   for (const row of tri.rows) {
@@ -131,7 +156,7 @@ export async function readAllRaw(options = {}) {
   }
 
   const items = cap.rows
-    .filter((row) => row && row.note_id)
+    .filter((row) => row && row.note_id && !deletedIDs.has(row.note_id))
     .map((row) => ({
       capture: row,
       triage: triageByID.get(row.note_id) || null,
