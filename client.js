@@ -25,44 +25,12 @@ window.__ModuleLoader__.load({
       '用力过猛': ['Overwrought', 'やりすぎ'], '加分项': ['Adds value', '加点'], '无感': ['Forgettable', '響かない'],
       '出戏': ['Breaks immersion', '没入できない'],
     };
-    const DIMENSIONS = [
-      { key: 'art', label: '作画', options: ['值得学习', '中规中矩', '有待提高'] },
-      { key: 'staging', label: '演出', options: ['有巧思', '平淡', '用力过猛'] },
-      { key: 'sound', label: '声音', options: ['加分项', '无感', '出戏'] },
-    ];
-
     function loadNotes() {
       try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '[]'); } catch (e) { return []; }
     }
 
     function saveNotes(list) {
       try { localStorage.setItem(NOTES_KEY, JSON.stringify(list)); } catch (e) { /* 忽略 */ }
-    }
-
-    function notesToMarkdown(list, lang) {
-      const tt = (zh, en, ja) => (lang === 'ja' ? (ja || en) : lang === 'en' ? en : zh);
-      const tg = (zh) => { const p = TAG[zh]; return p ? (lang === 'ja' ? p[1] : lang === 'en' ? p[0] : zh) : zh; };
-      const D = { art: ['作画', 'sakuga', '作画'], staging: ['演出', 'direction', '演出'], sound: ['声音', 'sound', '音響'] };
-      const lines = [tt('# 制作人视角记录', "# Director's View", '# 制作者視点') + ' (' + list.length + ')', ''];
-      const byTitle = {};
-      for (const n of list) {
-        (byTitle[n.title] = byTitle[n.title] || []).push(n);
-      }
-      for (const n of list) {
-        lines.push('## ' + (n.title || ''), '');
-        lines.push('- ' + tt('记录', 'Note', '記録'));
-        if (n.phenomena && n.phenomena.length) lines.push('  - ' + tt('现象：', 'Symptoms: ', '兆候：') + n.phenomena.map(tg).join('、'));
-        if (n.speculations && n.speculations.length) lines.push('  - ' + tt('推测：', 'Speculation: ', '推測：') + n.speculations.map(tg).join('、') + (n.evidence ? tt('（依据：', ' (evidence: ', '（根拠：') + n.evidence + '）' : ''));
-        const dims = n.dims || {};
-        const dimParts = Object.keys(dims).filter((k) => dims[k]).map((k) => {
-          const dl = (kk) => D[kk][lang === 'ja' ? 2 : lang === 'en' ? 1 : 0];
-          return dl(k) + '·' + tg(dims[k]);
-        });
-        if (dimParts.length) lines.push('  - ' + tt('维度：', 'Dimensions: ', '軸：') + dimParts.join('，'));
-        if (n.reflection) lines.push('  - ' + tt('如果是我：', 'If it were me: ', '自分なら：') + n.reflection);
-        lines.push('');
-      }
-      return lines.join('\n');
     }
 
 
@@ -248,7 +216,6 @@ window.__ModuleLoader__.load({
       const [scoreMap, setScoreMap] = useState({});
       const [enTitles, setEnTitles] = useState({});
       const [notes, setNotes] = useState(loadNotes);
-      const [draft, setDraft] = useState({ title: '', phenomena: [], speculations: [], evidence: '', reflection: '', dims: {} });
 
       // ---- 捕获复盘（Triage）----
       const [captures, setCaptures] = useState(null);
@@ -541,10 +508,10 @@ window.__ModuleLoader__.load({
         }
       };
 
-      const addNote = () => {
+      const addNote = (title) => {
         const entry = {
           id: String(Date.now()) + Math.random().toString(16).slice(2, 6),
-          title: '', phenomena: [], speculations: [], evidence: '', reflection: '', dims: {},
+          title: title || '', phenomena: [], speculations: [], evidence: '', reflection: '', dims: {},
           createdAt: new Date().toISOString(),
         };
         const next = [entry].concat(notes);
@@ -796,53 +763,10 @@ window.__ModuleLoader__.load({
       };
 
 
-      const toggleTag = (field, value) => {
-        setDraft((d) => {
-          const has = d[field].includes(value);
-          return Object.assign({}, d, { [field]: has ? d[field].filter((x) => x !== value) : d[field].concat(value) });
-        });
-      };
-
-      const saveDraft = () => {
-        if (!draft.title.trim()) {
-          setToast(t('先填作品名', 'Enter a title first', '作品名を入力してください'));
-          return;
-        }
-        const entry = {
-          id: String(Date.now()) + Math.random().toString(16).slice(2, 6),
-          title: draft.title.trim(),
-          phenomena: draft.phenomena,
-          speculations: draft.speculations,
-          evidence: draft.evidence.trim(),
-          reflection: draft.reflection.trim(),
-          dims: draft.dims,
-          createdAt: new Date().toISOString(),
-        };
-        const next = [entry].concat(notes);
-        setNotes(next);
-        saveNotes(next);
-        setDraft({ title: entry.title, phenomena: [], speculations: [], evidence: '', reflection: '', dims: {} });
-        setToast(t('已记录', 'Saved', '記録しました'));
-      };
-
       const removeNote = (id) => {
         const next = notes.filter((n) => n.id !== id);
         setNotes(next);
         saveNotes(next);
-      };
-
-      const exportNotes = () => {
-        try {
-          const blob = new Blob([notesToMarkdown(notes, lang)], { type: 'text/markdown;charset=utf-8' });
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = 'directors-view.md';
-          a.click();
-          setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-          setToast(t('已导出 Markdown', 'Markdown exported', 'Markdown を書き出しました'));
-        } catch (e) {
-          setToast(t('导出失败', 'Export failed', '書き出し失敗'));
-        }
       };
 
       useEffect(() => {
@@ -926,72 +850,6 @@ window.__ModuleLoader__.load({
         try { localStorage.setItem('animebar.hint', 'seen'); } catch (e) { /* 忽略 */ }
       };
 
-
-      const notesView = () => h('div', { style: { overflowY: 'auto', padding: '10px 12px' } },
-        h('div', { style: S.label }, t('作品名', 'Title', '作品名')),
-        h('input', {
-          value: draft.title,
-          placeholder: t('哪一部', 'Which title', 'どの作品'),
-          onChange: (e) => setDraft(Object.assign({}, draft, { title: e.target.value })),
-          style: S.field,
-        }),
-        h('div', { style: S.label }, t('现象（肉眼可见的事实）', 'Symptoms (visible facts)', '兆候（目に見える事実）')),
-        h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4 } },
-          PHENOMENA.map((t) => chip(ttag(t), draft.phenomena.includes(t), () => toggleTag('phenomena', t), 'ph-' + t)),
-        ),
-        h('div', { style: S.label }, t('推测（允许猜错）', 'Speculation (guessing is fine)', '推測（外れてもいい）')),
-        h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4 } },
-          SPECULATIONS.map((t) => chip(ttag(t), draft.speculations.includes(t), () => toggleTag('speculations', t), 'sp-' + t)),
-        ),
-        h('input', {
-          value: draft.evidence,
-          placeholder: t('依据（表记、总集篇、特写修得好…）', 'Evidence (credits, recap, a well-fixed close-up…)', '根拠（クレジット、総集編、上手いクローズアップ…）'),
-          onChange: (e) => setDraft(Object.assign({}, draft, { evidence: e.target.value })),
-          style: Object.assign({}, S.field, { marginTop: 6 }),
-        }),
-        DIMENSIONS.map((dim) => h('div', { key: dim.key },
-          h('div', { style: S.label }, t(dim.label, dim.label === '作画' ? 'sakuga' : dim.label === '演出' ? 'direction' : 'sound', dim.label === '声音' ? '音響' : dim.label)),
-          h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4 } },
-            dim.options.map((opt) => chip(ttag(opt), draft.dims[dim.key] === opt, () => {
-              setDraft((d) => Object.assign({}, d, { dims: Object.assign({}, d.dims, { [dim.key]: d.dims[dim.key] === opt ? '' : opt }) }));
-            }, dim.key + '-' + opt)),
-          ),
-        )),
-        h('div', { style: S.label }, t('如果是我，会怎么处理', 'What I would do', '自分ならどうするか')),
-        h('textarea', {
-          value: draft.reflection,
-          placeholder: t('有限资源下你会怎么改这段镜头', 'How would you handle this shot with limited resources?', '限られたリソースでこのカットをどうするか'),
-          onChange: (e) => setDraft(Object.assign({}, draft, { reflection: e.target.value })),
-          style: S.ta,
-        }),
-        h('div', { style: { display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' } },
-          h('button', { type: 'button', onClick: saveDraft, style: S.primary }, t('保存', 'Save', '保存')),
-          h('button', { type: 'button', onClick: exportNotes, style: Object.assign({}, S.chip, { padding: '4px 10px' }) }, t('导出 Markdown', 'Export Markdown', 'Markdown を書き出す')),
-          h('span', { style: { fontSize: 11, color: '#64748b', marginLeft: 'auto' } }, notes.length + t(' 条记录', ' notes', ' 件')),
-        ),
-        notes.length ? h('div', { style: { marginTop: 10, borderTop: '1px solid #1e293b' } },
-          notes.map((n) => h('div', { key: n.id, style: S.noteRow },
-            h('div', { style: { display: 'flex', gap: 6, alignItems: 'baseline' } },
-              h('span', { style: { fontSize: 12, color: '#e2e8f0' } }, n.title),
-              h('button', {
-                type: 'button',
-                style: Object.assign({}, S.act, { marginLeft: 'auto' }),
-                onClick: () => removeNote(n.id),
-              }, t('删除', 'Delete', '削除')),
-            ),
-            n.phenomena.length || n.speculations.length
-              ? h('div', { style: { fontSize: 11, color: '#64748b', marginTop: 2 } },
-                  n.phenomena.concat(n.speculations).map(ttag).join(' · '))
-              : null,
-            n.reflection ? h('div', { style: { fontSize: 11.5, color: '#94a3b8', marginTop: 2 } }, t('如果是我：', 'If it were me: ', '自分なら：') + n.reflection) : null,
-          )),
-        ) : null,
-      );
-
-      const chip = (label, active, onClick, key) => h('button', {
-        key, type: 'button', onClick,
-        style: active ? Object.assign({}, S.chip, S.chipOn) : S.chip,
-      }, label);
 
       return h('div', { style: { display: 'inline-flex', position: 'relative' } },
         hint && !open ? h('div', { style: S.hint }, '点这里看今天的番') : null,
@@ -1081,7 +939,7 @@ window.__ModuleLoader__.load({
                         style: S.act,
                         title: t('记一笔（制作人视角）', 'Note (Director view)', '記録（制作者視点）'), 
                         onClick: () => {
-                          setDraft(Object.assign({}, draft, { title: it.title }));
+                          addNote(it.title);
                           setTab('notes');
                         },
                       }, t('打点', 'Note', '記録')),
