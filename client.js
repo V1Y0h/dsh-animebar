@@ -329,13 +329,24 @@ window.__ModuleLoader__.load({
         });
       };
 
-      // 从片名猜集数：'第7集' / 'xxx - 07' / 'E07' 都认，猜不到就留空
+      // 从片名猜集数：'第7集' / 'S01E07' / 'EP05' / ' - 03 [1080p]' 都认；
+      // 分辨率（1080/720…）和年份不当作集数
       const guessEpisode = (title) => {
         const t = String(title || '');
-        const m = t.match(/第\s*(\d{1,3})\s*[集話话]/)
-          || t.match(/\bE(\d{1,3})\b/i)
-          || t.match(/[-_\s](\d{1,3})(?:v\d)?(?:\.[A-Za-z0-9]+)?$/);
-        return m ? String(parseInt(m[1], 10)) : '';
+        let m = t.match(/第\s*(\d{1,3})\s*[集話话]/);
+        if (m) return String(parseInt(m[1], 10));
+        m = t.match(/S\d{1,2}E(\d{1,3})/i) || t.match(/\bE(?:P)?(\d{1,3})\b/i);
+        if (m) return String(parseInt(m[1], 10));
+        const skip = new Set(['480', '720', '1080', '1440', '2160', '264', '265']);
+        const tokens = t.match(/(?:^|[\s\-_\[\]\(\)])(\d{1,3})(?=[\s\-_\[\]\(\)\.]|$)/g) || [];
+        for (const tok of tokens) {
+          const n = tok.replace(/\D/g, '');
+          if (!n) continue;
+          const v = parseInt(n, 10);
+          if (skip.has(n) || v === 0 || v >= 190) continue;
+          return String(v);
+        }
+        return '';
       };
 
       const fmtClock = (sec) => {
