@@ -1,4 +1,5 @@
 import { defineTool } from "@deepseek-ai/dsh-tools";
+import { readCaptures } from "./captures.js";
 
 export const name = "animebar";
 export const inject = ["tools"];
@@ -80,6 +81,34 @@ export function apply(ctx, config) {
         .slice(0, limit);
 
       return { weekday, total: items.length, items };
+    },
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "anime_captures",
+    description:
+      "List captures recorded from the local AnimeBar capture log (IINA and other players), newest first. Only public-safe fields are returned: timecode, source, title, episode, scope and observed phenomena. Private fields (personal reflection and speculation) are deliberately excluded and never leave the machine.",
+    parameters: {
+      only: {
+        type: "string",
+        enum: ["all", "untriaged", "triaged"],
+        description: "Filter by whether a capture already has a triage entry. Defaults to all.",
+      },
+      limit: {
+        type: "number",
+        description: "Maximum number of captures to return. Defaults to 20.",
+      },
+    },
+    output: {
+      schema: { type: "object", additionalProperties: true },
+      render: (_args, value) => [{ type: "text", text: JSON.stringify(value) }],
+    },
+    async execute(args) {
+      return readCaptures({
+        dir: config?.dataDir || undefined,
+        only: args?.only ?? "all",
+        limit: args?.limit ?? 20,
+      });
     },
   }));
 }
