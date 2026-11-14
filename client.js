@@ -372,7 +372,7 @@ window.__ModuleLoader__.load({
       // 捕获是外部（IINA）写进文件的，面板自己不会收到通知，
       // 所以：进入复盘页就拉一次，停留期间每 4 秒轮询，离开即停。
       useEffect(() => {
-        if (!open || tab !== 'triage') return undefined;
+        if (!open || tab !== 'notes') return undefined;
         loadCaptures();
         loadTags();
         const timer = setInterval(() => loadCaptures(true), 4000);
@@ -587,7 +587,9 @@ window.__ModuleLoader__.load({
             t('还没有捕获。在 IINA 里播放时按 ⌃⌥K 试试。', 'No captures yet. Press ⌃⌥K while playing in IINA.', 'まだありません。IINA で ⌃⌥K。'));
         }
         return h('div', null,
-          h('div', { style: { display: 'flex', gap: 6, padding: '8px 12px 0', alignItems: 'center' } },
+          h('div', { style: { fontSize: 12, fontWeight: 600, padding: '8px 12px 0', color: '#e2e8f0' } },
+            t('待处理捕获', 'Pending captures', '未処理のキャプチャ')),
+          h('div', { style: { display: 'flex', gap: 6, padding: '6px 12px 0', alignItems: 'center' } },
             h('span', { style: { flex: 1, fontSize: 11, color: '#64748b' } },
               captures.length + t(' 条捕获', ' captures', ' 件')),
             h('button', { type: 'button', style: S.act, onClick: () => setManage((v) => !v) },
@@ -890,7 +892,6 @@ window.__ModuleLoader__.load({
               h('button', { type: 'button', onClick: () => setTab('tv'), style: Object.assign({}, S.tab, tab === 'tv' ? S.tabOn : null) }, t('新番', 'TV', '新作')),
               h('button', { type: 'button', onClick: () => setTab('movie'), style: Object.assign({}, S.tab, tab === 'movie' ? S.tabOn : null) }, t('剧场版', 'Films', '劇場版')),
               h('button', { type: 'button', onClick: () => setTab('notes'), style: Object.assign({}, S.tab, tab === 'notes' ? S.tabOn : null) }, t('记录', 'Notes', '記録')),
-              h('button', { type: 'button', onClick: () => setTab('triage'), style: Object.assign({}, S.tab, tab === 'triage' ? S.tabOn : null) }, t('复盘', 'Triage', '整理')),
             ),
             ['zh', 'en', 'ja'].map((l) => h('button', {
               key: 'lang-' + l,
@@ -903,7 +904,7 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', title: t('关闭', 'Close', '閉じる'), style: S.icon, onClick: () => setOpen(false) }, '×'),
           ),
 
-          tab === 'notes' || tab === 'triage' ? null : h('div', { style: S.filters },
+          tab === 'notes' ? null : h('div', { style: S.filters },
             tab === 'tv' ? chip(t('全部', 'All', '全て'), wd === 0, () => setWd(0), 'wd0') : null,
             tab === 'tv' ? DAYS.map((d, i) => chip(lang === 'en' ? DAYS_EN[i] : lang === 'ja' ? DAYS_JA[i] : d, wd === i + 1, () => setWd(i + 1), 'wd' + (i + 1))) : null,
             chip(t('按热度', 'Popular', '人気順'), sortKey === 'pop', () => setSortKey('pop'), 'k1'),
@@ -917,9 +918,7 @@ window.__ModuleLoader__.load({
           ),
 
           tab === 'notes'
-            ? notesView()
-            : tab === 'triage'
-              ? triageView()
+            ? h('div', null, triageView(), notesView())
             : error
               ? h('div', { style: S.status }, error)
             : source.length === 0
