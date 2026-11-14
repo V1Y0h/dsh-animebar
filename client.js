@@ -252,7 +252,59 @@ window.__ModuleLoader__.load({
 
       // ---- 捕获复盘（Triage）----
       const [captures, setCaptures] = useState(null);
-      const [tri, setTri] = useState({ note_id: '', phenomena: '', speculations: '', my_take: '', evidence: '' });
+      const EMPTY_TRI = { note_id: '', phenomena: [], speculations: [], my_take: '', evidence: '' };
+      const [tri, setTri] = useState(EMPTY_TRI);
+      const [tags, setTags] = useState([]);
+
+      const labelOf = (tag) => {
+        const l = (tag && tag.label) || {};
+        if (lang === 'ja') return l.ja || l.en || tag.slug;
+        if (lang === 'en') return l.en || tag.slug;
+        return l.zh || tag.slug;
+      };
+
+      const loadTags = useCallback(async () => {
+        try {
+          const res = await fetch('/api/animebar/tags', { credentials: 'same-origin' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          setTags(Array.isArray(data.tags) ? data.tags : []);
+        } catch (e) {
+          setToast(t('读取标签失败', 'Cannot load tags', 'タグ取得に失敗') + ': ' + String(e.message || e));
+        }
+      }, [lang]);
+
+      const [newSlug, setNewSlug] = useState('');
+
+      const addSlug = async (kind) => {
+        const slug = newSlug.trim().toLowerCase();
+        if (!slug) return;
+        try {
+          const res = await fetch('/api/animebar/tags', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ slug, kind }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) throw new Error(data.error || 'HTTP ' + res.status);
+          await loadTags();
+          toggleTriTag(kind, slug);
+          setNewSlug('');
+          setToast(t('已新增标签', 'Tag added', 'タグを追加'));
+        } catch (e) {
+          setToast(t('新增失败', 'Add failed', '追加に失敗') + ': ' + String(e.message || e));
+        }
+      };
+
+      const toggleTriTag = (kind, slug) => {
+        const field = kind === 'speculation' ? 'speculations' : 'phenomena';
+        setTri((prev) => {
+          const cur = Array.isArray(prev[field]) ? prev[field] : [];
+          const next = cur.includes(slug) ? cur.filter((x) => x !== slug) : cur.concat(slug);
+          return Object.assign({}, prev, { [field]: next });
+        });
+      };
 
       const fmtClock = (sec) => {
         const v = Math.max(0, Math.round(Number(sec) || 0));
@@ -273,21 +325,22 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         if (open && tab === 'triage' && captures === null) loadCaptures();
-      }, [open, tab, captures, loadCaptures]);
+        if (open && tab === 'triage' && tags.length === 0) loadTags();
+      }, [open, tab, captures, tags.length, loadCaptures, loadTags]);
 
       const openTriage = (item) => {
         const c = item.capture || {};
         const tr = item.triage || {};
         if (tri.note_id === c.note_id) {
-          setTri({ note_id: '', phenomena: '', speculations: '', my_take: '', evidence: '' });
+          setTri(EMPTY_TRI);
           return;
         }
         setTri({
           note_id: c.note_id,
-          phenomena: Array.isArray(tr.phenomena) ? tr.phenomena.join(', ') : '',
+          phenomena: Array.isArray(tr.phenomena) ? tr.phenomena.slice() : [],
           speculations: Array.isArray(tr.speculations)
-            ? tr.speculations.map((s) => (s && s.tag) || '').filter(Boolean).join(', ')
-            : '',
+            ? tr.speculations.map((s) => (s && s.tag) || '').filter(Boolean)
+            : [],
           my_take: typeof tr.my_take === 'string' ? tr.my_take : '',
           evidence: Array.isArray(tr.evidence) && tr.evidence[0] && tr.evidence[0].url ? tr.evidence[0].url : '',
         });
@@ -295,11 +348,10 @@ window.__ModuleLoader__.load({
 
       const saveTriage = async () => {
         if (!tri.note_id) return;
-        const split = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);
         const payload = {
           note_id: tri.note_id,
-          phenomena: split(tri.phenomena),
-          speculations: split(tri.speculations).map((tag) => ({ tag })),
+          phenomena: Array.isArray(tri.phenomena) ? tri.phenomena.slice() : [],
+          speculations: (Array.isArray(tri.speculations) ? tri.speculations : []).map((tag) => ({ tag })),
           my_take: tri.my_take,
           evidence: tri.evidence.trim() ? [{ type: 'url', url: tri.evidence.trim() }] : [],
         };
@@ -313,7 +365,7 @@ window.__ModuleLoader__.load({
           const data = await res.json();
           if (!res.ok || !data.ok) throw new Error(data.error || 'HTTP ' + res.status);
           setToast(t('已保存复盘', 'Triage saved', '保存しました'));
-          setTri({ note_id: '', phenomena: '', speculations: '', my_take: '', evidence: '' });
+          setTri(EMPTY_TRI);
           await loadCaptures();
         } catch (e) {
           setToast(t('保存失败', 'Save failed', '保存に失敗') + ': ' + String(e.message || e));
@@ -343,20 +395,38 @@ window.__ModuleLoader__.load({
               ),
               active
                 ? h('div', null,
-                    h('div', { style: S.label }, t('现象（英文 slug，逗号分隔）', 'Phenomena (slugs, comma separated)', '現象')),
-                    h('input', {
-                      value: tri.phenomena,
-                      placeholder: 'still_heavy, art_style_shift',
-                      onChange: (e) => setTri(Object.assign({}, tri, { phenomena: e.target.value })),
-                      style: S.field,
-                    }),
-                    h('div', { style: S.label }, t('推测（英文 slug，逗号分隔）', 'Speculations (slugs, comma separated)', '推測')),
-                    h('input', {
-                      value: tri.speculations,
-                      placeholder: 'outsourcing',
-                      onChange: (e) => setTri(Object.assign({}, tri, { speculations: e.target.value })),
-                      style: S.field,
-                    }),
+                    h('div', { style: S.label }, t('现象', 'Observed', '現象')),
+                    h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 } },
+                      tags.filter((x) => x.kind === 'phenomenon').map((tag) =>
+                        h('button', {
+                          key: 'ph-' + tag.slug,
+                          type: 'button',
+                          title: tag.slug,
+                          style: Object.assign({}, S.chip, (tri.phenomena || []).indexOf(tag.slug) >= 0 ? S.chipOn : null),
+                          onClick: () => toggleTriTag('phenomenon', tag.slug),
+                        }, labelOf(tag))),
+                    ),
+                    h('div', { style: S.label }, t('推测', 'Speculation', '推測')),
+                    h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 } },
+                      tags.filter((x) => x.kind === 'speculation').map((tag) =>
+                        h('button', {
+                          key: 'sp-' + tag.slug,
+                          type: 'button',
+                          title: tag.slug,
+                          style: Object.assign({}, S.chip, (tri.speculations || []).indexOf(tag.slug) >= 0 ? S.chipOn : null),
+                          onClick: () => toggleTriTag('speculation', tag.slug),
+                        }, labelOf(tag))),
+                    ),
+                    h('div', { style: { display: 'flex', gap: 4, marginTop: 2, marginBottom: 4 } },
+                      h('input', {
+                        value: newSlug,
+                        placeholder: t('新增标签 slug（小写英文）', 'New tag slug', '新規タグ slug'),
+                        onChange: (e) => setNewSlug(e.target.value),
+                        style: Object.assign({}, S.field, { flex: 1, minWidth: 0 }),
+                      }),
+                      h('button', { type: 'button', style: S.act, onClick: () => addSlug('phenomenon') }, t('加现象', 'Obs.', '現象')),
+                      h('button', { type: 'button', style: S.act, onClick: () => addSlug('speculation') }, t('加推测', 'Spec.', '推測')),
+                    ),
                     h('div', { style: S.label }, t('如果是我', 'What I would do', '自分なら')),
                     h('textarea', {
                       value: tri.my_take,

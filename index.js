@@ -1,6 +1,7 @@
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { readCaptures, readAllRaw } from "./captures.js";
 import { buildTriageRecord, appendTriageRecord } from "./triage.js";
+import { readTags, addTag } from "./tags.js";
 
 export const name = "animebar";
 export const inject = ["tools"];
@@ -119,12 +120,14 @@ export function apply(ctx, config) {
   // 用 ctx.inject 而不是写进 inject，是为了在没有 connection 服务的 profile 里
   // 插件仍能提供 anime_today / anime_captures，而不是整体失活。
   ctx.inject(["connection"], (connCtx) => {
-    try {
-      const json = (status, payload) =>
+    // 必须定义在 try 外面：下面的 tags 路由注册在 try/catch 之后，
+    // 写在 try 里会导致 ReferenceError: json is not defined
+    const json = (status, payload) =>
       new Response(JSON.stringify(payload), {
         status,
         headers: { "content-type": "application/json; charset=utf-8" },
       });
+    try {
 
     connCtx.connection.fetch.register({
       path: "/api/animebar/triage",
@@ -156,8 +159,25 @@ export function apply(ctx, config) {
       },
     });
     } catch (e) {
-      // 注册失败时不要静默：整条复盘写入链路会不可用
       console.error("animebar: 路由注册失败", e);
     }
+    // 标签注册表：面板只从 slug 里选，不自由输入
+    connCtx.connection.fetch.register({
+      path: "/api/animebar/tags",
+      methods: ["GET", "POST"],
+      requestBody: "buffered",
+      fetch: async (request) => {
+        try {
+          if (request.method === "GET") {
+            return json(200, await readTags(config?.dataDir || undefined));
+          }
+          const body = await request.json();
+          const result = await addTag(body, config?.dataDir || undefined);
+          return json(200, { ok: true, ...result });
+        } catch (err) {
+          return json(400, { ok: false, error: String(err?.message || err) });
+        }
+      },
+    });
   });
 }
