@@ -40,6 +40,18 @@ export function buildTriageRecord(body) {
   return record;
 }
 
+// 清空复盘：追加墓碑而不是抹掉历史行，读取时后者覆盖前者
+export function buildClearRecord(body) {
+  const noteID = typeof body?.note_id === "string" ? body.note_id.trim() : "";
+  if (!noteID) throw new Error("缺少 note_id");
+  return {
+    schema_version: 1,
+    note_id: noteID,
+    cleared_at: new Date().toISOString(),
+    cleared: true,
+  };
+}
+
 export async function appendTriageRecord(record, dir) {
   const target = dir || DEFAULT_DIR;
   await mkdir(target, { recursive: true });

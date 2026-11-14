@@ -350,6 +350,26 @@ window.__ModuleLoader__.load({
         if (open && tab === 'triage' && tags.length === 0) loadTags();
       }, [open, tab, captures, tags.length, loadCaptures, loadTags]);
 
+      const clearTriage = async (id) => {
+        if (!id) return;
+        try {
+          const res = await fetch('/api/animebar/triage', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'content-type': 'application/json' },
+            // 追加墓碑而不是抹掉历史行：误删还能翻回来
+            body: JSON.stringify({ note_id: id, clear: true }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) throw new Error(data.error || 'HTTP ' + res.status);
+          setToast(t('已清空复盘', 'Triage cleared', '整理をクリア'));
+          setTri(EMPTY_TRI);
+          await loadCaptures();
+        } catch (e) {
+          setToast(t('清空失败', 'Clear failed', 'クリア失敗') + ': ' + String(e.message || e));
+        }
+      };
+
       const openTriage = (item) => {
         const c = item.capture || {};
         const tr = item.triage || {};
@@ -577,9 +597,13 @@ window.__ModuleLoader__.load({
                       onChange: (e) => setTri(Object.assign({}, tri, { evidence: e.target.value })),
                       style: S.field,
                     }),
-                    h('div', { style: { marginTop: 8 } },
+                    h('div', { style: { marginTop: 8, display: 'flex', gap: 6, alignItems: 'center' } },
                       h('button', { type: 'button', style: S.primary, onClick: saveTriage },
                         t('保存复盘', 'Save triage', '保存')),
+                      tr
+                        ? h('button', { type: 'button', style: S.act, onClick: () => clearTriage(c.note_id) },
+                            t('清空复盘', 'Clear triage', '整理をクリア'))
+                        : null,
                     ),
                   )
                 : null,

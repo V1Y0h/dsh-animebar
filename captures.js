@@ -81,7 +81,9 @@ export async function readCaptures(options = {}) {
 
   const triageByID = new Map();
   for (const row of triageRes.rows) {
-    if (row && row.note_id) triageByID.set(row.note_id, row);
+    if (!row || !row.note_id) continue;
+    if (row.cleared === true) triageByID.delete(row.note_id);
+    else triageByID.set(row.note_id, row);
   }
 
   let items = captureRes.rows
@@ -123,7 +125,9 @@ export async function readAllRaw(options = {}) {
 
   const triageByID = new Map();
   for (const row of tri.rows) {
-    if (row && row.note_id) triageByID.set(row.note_id, row);
+    if (!row || !row.note_id) continue;
+    if (row.cleared === true) triageByID.delete(row.note_id);
+    else triageByID.set(row.note_id, row);
   }
 
   const items = cap.rows

@@ -1,6 +1,6 @@
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { readCaptures, readAllRaw } from "./captures.js";
-import { buildTriageRecord, appendTriageRecord } from "./triage.js";
+import { buildTriageRecord, buildClearRecord, appendTriageRecord } from "./triage.js";
 import { readTags, addTag, deleteTag } from "./tags.js";
 
 export const name = "animebar";
@@ -136,7 +136,7 @@ export function apply(ctx, config) {
       fetch: async (request) => {
         try {
           const body = await request.json();
-          const record = buildTriageRecord(body);
+          const record = body && body.clear === true ? buildClearRecord(body) : buildTriageRecord(body);
           await appendTriageRecord(record, config?.dataDir || undefined);
           return json(200, { ok: true, note_id: record.note_id });
         } catch (err) {
