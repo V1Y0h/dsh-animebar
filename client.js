@@ -280,6 +280,7 @@ window.__ModuleLoader__.load({
       const [seedSlugs, setSeedSlugs] = useState([]);
       const [pendingDelete, setPendingDelete] = useState('');
       const [dimsOpen, setDimsOpen] = useState({});
+      const [exportRange, setExportRange] = useState('all');
 
       const addSlug = async (kind) => {
         const slug = newTag.slug.trim().toLowerCase();
@@ -509,8 +510,24 @@ window.__ModuleLoader__.load({
         return out.join('\n');
       };
 
+      // 导出范围：按记录创建时间归属季度
+      const quarterOf = (it) => {
+        const created = String((it.capture || {}).created_at || '');
+        const y = created.slice(0, 4);
+        const m = Number(created.slice(5, 7));
+        if (!y || !m) return '';
+        return y + '-Q' + Math.floor((m - 1) / 3 + 1);
+      };
+
+      const quarters = useMemo(() => {
+        const set = new Set();
+        (captures || []).forEach((it) => { const q = quarterOf(it); if (q) set.add(q); });
+        return Array.from(set).sort().reverse();
+      }, [captures]);
+
       const exportDraft = async () => {
-        const items = captures || [];
+        const all = captures || [];
+        const items = exportRange === 'all' ? all : all.filter((it) => quarterOf(it) === exportRange);
         if (items.length === 0) {
           setToast(t('还没有可导出的记录', 'Nothing to export', '書き出す記録がありません'));
           return;
@@ -679,6 +696,16 @@ window.__ModuleLoader__.load({
           h('div', { style: { display: 'flex', gap: 6, padding: '6px 12px 0', alignItems: 'center' } },
             h('span', { style: { flex: 1, fontSize: 11, color: '#64748b' } },
               (captures.length + notes.length) + t(' 条记录', ' records', ' 件')),
+            quarters.length
+              ? h('select', {
+                  value: exportRange,
+                  onChange: (e) => setExportRange(e.target.value),
+                  style: Object.assign({}, S.field, { width: 92, padding: '2px 4px', fontSize: 11 }),
+                },
+                  h('option', { value: 'all' }, t('全部', 'All', '全て')),
+                  quarters.map((q) => h('option', { key: q, value: q }, q)),
+                )
+              : null,
             h('button', { type: 'button', style: S.act, onClick: addNote },
               t('＋手记', '+ Note', '＋手記')),
             h('button', { type: 'button', style: S.act, onClick: () => setManage((v) => !v) },
