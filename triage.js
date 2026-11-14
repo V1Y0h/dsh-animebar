@@ -35,6 +35,10 @@ export function buildTriageRecord(body) {
     );
   }
   if (typeof body.my_take === "string") record.my_take = body.my_take;
+  // 维度是 Mac 端填的，DSH 保存时要原样带回去，否则会被整条覆盖丢掉
+  if (body.dims && typeof body.dims === "object" && !Array.isArray(body.dims)) {
+    record.dims = body.dims;
+  }
   if (Array.isArray(body.evidence)) {
     record.evidence = body.evidence.filter(
       (x) => x && typeof x === "object" && typeof x.type === "string",

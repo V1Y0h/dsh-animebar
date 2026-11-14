@@ -219,7 +219,7 @@ window.__ModuleLoader__.load({
 
       // ---- 捕获复盘（Triage）----
       const [captures, setCaptures] = useState(null);
-      const EMPTY_TRI = { note_id: '', episode: '', phenomena: [], speculations: [], my_take: '', evidence: '' };
+      const EMPTY_TRI = { note_id: '', episode: '', phenomena: [], speculations: [], my_take: '', evidence: '', dims: {} };
       const [tri, setTri] = useState(EMPTY_TRI);
       const [tags, setTags] = useState([]);
 
@@ -396,6 +396,7 @@ window.__ModuleLoader__.load({
         setTri({
           note_id: c.note_id,
           episode: tr && tr.episode ? String(tr.episode) : guessEpisode(c.title),
+          dims: (tr && tr.dims) || {},
           phenomena: Array.isArray(tr.phenomena) ? tr.phenomena.slice() : [],
           speculations: Array.isArray(tr.speculations)
             ? tr.speculations.map((s) => (s && s.tag) || '').filter(Boolean)
@@ -413,6 +414,7 @@ window.__ModuleLoader__.load({
           phenomena: Array.isArray(tri.phenomena) ? tri.phenomena.slice() : [],
           speculations: (Array.isArray(tri.speculations) ? tri.speculations : []).map((tag) => ({ tag })),
           my_take: tri.my_take,
+          dims: tri.dims || {},
           evidence: tri.evidence.trim() ? [{ type: 'url', url: tri.evidence.trim() }] : [],
         };
         try {
