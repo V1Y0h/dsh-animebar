@@ -372,6 +372,66 @@ window.__ModuleLoader__.load({
         }
       };
 
+      // 导出草稿：纯客户端生成，结果只进剪贴板，不经过模型
+      const buildDraft = (items) => {
+        const labelFor = (slug) => {
+          const tag = tags.find((x) => x.slug === slug);
+          return tag ? labelOf(tag) : slug;
+        };
+        const groups = new Map();
+        (items || []).forEach((item) => {
+          const c = item.capture || {};
+          const key = c.title || t('（无标题）', '(untitled)', '（無題）');
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(item);
+        });
+
+        const out = [];
+        out.push(t('# 季度复盘草稿', '# Season review draft', '# クール振り返り草稿'));
+        out.push('');
+        out.push(t('生成于 ', 'Generated ', '生成: ') + new Date().toLocaleString());
+        out.push('');
+
+        Array.from(groups.keys()).sort().forEach((title) => {
+          const rows = groups.get(title).slice().sort((a, b) => (a.capture.t_start || 0) - (b.capture.t_start || 0));
+          out.push('## ' + title);
+          out.push('');
+          rows.forEach((item) => {
+            const c = item.capture || {};
+            const tr = item.triage || {};
+            const ph = (Array.isArray(tr.phenomena) ? tr.phenomena : []).map(labelFor);
+            const sp = (Array.isArray(tr.speculations) ? tr.speculations : [])
+              .map((x) => (x && x.tag ? labelFor(x.tag) : ''))
+              .filter(Boolean);
+            const ev = Array.isArray(tr.evidence) ? tr.evidence.filter((x) => x && x.url) : [];
+
+            out.push('- **' + fmtClock(c.t_start) + '**' + (ph.length ? ' · ' + ph.join(' / ') : ''));
+            if (sp.length) out.push('  - ' + t('推测', 'Speculation', '推測') + ': ' + sp.join(' / '));
+            if (tr.my_take) out.push('  - ' + t('如果是我', 'What I would do', '自分なら') + ': ' + tr.my_take);
+            if (ev.length) out.push('  - ' + t('证据', 'Evidence', '根拠') + ': ' + ev.map((x) => x.url).join(' '));
+            if (!tr.note_id) out.push('  - ' + t('（尚未复盘）', '(not triaged)', '（未整理）'));
+          });
+          out.push('');
+        });
+
+        return out.join('\n');
+      };
+
+      const exportDraft = async () => {
+        const items = captures || [];
+        if (items.length === 0) {
+          setToast(t('还没有可导出的记录', 'Nothing to export', '書き出す記録がありません'));
+          return;
+        }
+        const text = buildDraft(items);
+        try {
+          await navigator.clipboard.writeText(text);
+          setToast(t('草稿已复制到剪贴板', 'Draft copied to clipboard', '下書きをコピーしました'));
+        } catch (e) {
+          setToast(t('复制失败', 'Copy failed', 'コピーに失敗') + ': ' + String(e.message || e));
+        }
+      };
+
       const triageView = () => {
         if (captures === null) {
           return h('div', { style: S.status }, t('正在读取…', 'Loading…', '読み込み中…'));
@@ -380,8 +440,15 @@ window.__ModuleLoader__.load({
           return h('div', { style: S.status },
             t('还没有捕获。在 IINA 里播放时按 ⌃⌥K 试试。', 'No captures yet. Press ⌃⌥K while playing in IINA.', 'まだありません。IINA で ⌃⌥K。'));
         }
-        return h('div', { style: S.list },
-          captures.map((item) => {
+        return h('div', null,
+          h('div', { style: { display: 'flex', gap: 6, padding: '8px 12px 0', alignItems: 'center' } },
+            h('span', { style: { flex: 1, fontSize: 11, color: '#64748b' } },
+              captures.length + t(' 条捕获', ' captures', ' 件')),
+            h('button', { type: 'button', style: S.act, onClick: exportDraft },
+              t('导出草稿', 'Export draft', '下書きを書き出す')),
+          ),
+          h('div', { style: S.list },
+            captures.map((item) => {
             const c = item.capture || {};
             const tr = item.triage;
             const active = tri.note_id === c.note_id;
@@ -446,8 +513,9 @@ window.__ModuleLoader__.load({
                     ),
                   )
                 : null,
-            );
-          }),
+              );
+            }),
+          ),
         );
       };
 
