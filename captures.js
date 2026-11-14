@@ -60,12 +60,14 @@ async function readJSONL(path) {
   return { rows, missing: false, bad };
 }
 
-function publicView(capture, triaged) {
+function publicView(capture, triage) {
   const out = {};
   for (const key of PUBLIC_FIELDS) {
     if (capture[key] !== undefined) out[key] = capture[key];
   }
-  out.triaged = triaged;
+  // 复盘时补的现象标签覆盖捕获时的空数组，否则「按标签检索」查不到东西
+  if (triage && Array.isArray(triage.phenomena)) out.phenomena = triage.phenomena;
+  out.triaged = !!triage;
   return out;
 }
 
@@ -77,13 +79,14 @@ export async function readCaptures(options = {}) {
   const captureRes = await readJSONL(join(dir, CAPTURE_FILE));
   const triageRes = await readJSONL(join(dir, TRIAGE_FILE));
 
-  const triagedIDs = new Set(
-    triageRes.rows.map((row) => row.note_id).filter(Boolean),
-  );
+  const triageByID = new Map();
+  for (const row of triageRes.rows) {
+    if (row && row.note_id) triageByID.set(row.note_id, row);
+  }
 
   let items = captureRes.rows
     .filter((row) => row.note_id)
-    .map((row) => publicView(row, triagedIDs.has(row.note_id)));
+    .map((row) => publicView(row, triageByID.get(row.note_id)));
 
   if (only === "untriaged") items = items.filter((i) => !i.triaged);
   else if (only === "triaged") items = items.filter((i) => i.triaged);
@@ -95,7 +98,7 @@ export async function readCaptures(options = {}) {
   return {
     dir,
     total: captureRes.rows.length,
-    triaged: triagedIDs.size,
+    triaged: triageByID.size,
     returned: items.length,
     missing: {
       capture: captureRes.missing ? CAPTURE_FILE : null,
