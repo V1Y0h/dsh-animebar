@@ -86,8 +86,9 @@ function publicView(capture, triage) {
   for (const key of PUBLIC_FIELDS) {
     if (capture[key] !== undefined) out[key] = capture[key];
   }
-  // 复盘时补的现象标签覆盖捕获时的空数组，否则「按标签检索」查不到东西
+  // 复盘时补的字段覆盖捕获时的空值：现象标签、集数
   if (triage && Array.isArray(triage.phenomena)) out.phenomena = triage.phenomena;
+  if (triage && Number.isFinite(triage.episode)) out.episode = triage.episode;
   out.triaged = !!triage;
   return out;
 }

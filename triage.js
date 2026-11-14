@@ -23,6 +23,9 @@ export function buildTriageRecord(body) {
     triaged_at: new Date().toISOString(),
   };
 
+  const ep = Number(body.episode);
+  if (Number.isFinite(ep) && ep > 0) record.episode = Math.trunc(ep);
+
   if (Array.isArray(body.phenomena)) {
     record.phenomena = body.phenomena.filter((x) => typeof x === "string" && x);
   }

@@ -252,7 +252,7 @@ window.__ModuleLoader__.load({
 
       // ---- 捕获复盘（Triage）----
       const [captures, setCaptures] = useState(null);
-      const EMPTY_TRI = { note_id: '', phenomena: [], speculations: [], my_take: '', evidence: '' };
+      const EMPTY_TRI = { note_id: '', episode: '', phenomena: [], speculations: [], my_take: '', evidence: '' };
       const [tri, setTri] = useState(EMPTY_TRI);
       const [tags, setTags] = useState([]);
 
@@ -327,6 +327,15 @@ window.__ModuleLoader__.load({
           const next = cur.includes(slug) ? cur.filter((x) => x !== slug) : cur.concat(slug);
           return Object.assign({}, prev, { [field]: next });
         });
+      };
+
+      // 从片名猜集数：'第7集' / 'xxx - 07' / 'E07' 都认，猜不到就留空
+      const guessEpisode = (title) => {
+        const t = String(title || '');
+        const m = t.match(/第\s*(\d{1,3})\s*[集話话]/)
+          || t.match(/\bE(\d{1,3})\b/i)
+          || t.match(/[-_\s](\d{1,3})(?:v\d)?(?:\.[A-Za-z0-9]+)?$/);
+        return m ? String(parseInt(m[1], 10)) : '';
       };
 
       const fmtClock = (sec) => {
@@ -406,6 +415,7 @@ window.__ModuleLoader__.load({
         }
         setTri({
           note_id: c.note_id,
+          episode: tr && tr.episode ? String(tr.episode) : guessEpisode(c.title),
           phenomena: Array.isArray(tr.phenomena) ? tr.phenomena.slice() : [],
           speculations: Array.isArray(tr.speculations)
             ? tr.speculations.map((s) => (s && s.tag) || '').filter(Boolean)
@@ -419,6 +429,7 @@ window.__ModuleLoader__.load({
         if (!tri.note_id) return;
         const payload = {
           note_id: tri.note_id,
+          episode: Number(tri.episode) || undefined,
           phenomena: Array.isArray(tri.phenomena) ? tri.phenomena.slice() : [],
           speculations: (Array.isArray(tri.speculations) ? tri.speculations : []).map((tag) => ({ tag })),
           my_take: tri.my_take,
@@ -595,6 +606,15 @@ window.__ModuleLoader__.load({
               ),
               active
                 ? h('div', null,
+                    h('div', { style: { display: 'flex', gap: 6, alignItems: 'center', marginBottom: 2 } },
+                      h('span', { style: { fontSize: 11, color: '#64748b' } }, t('集数', 'Episode', '話')),
+                      h('input', {
+                        value: tri.episode,
+                        placeholder: '7',
+                        onChange: (e) => setTri(Object.assign({}, tri, { episode: e.target.value })),
+                        style: Object.assign({}, S.field, { width: 64, flex: '0 0 auto' }),
+                      }),
+                    ),
                     h('div', { style: S.label }, t('现象', 'Observed', '現象')),
                     h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 } },
                       tags.filter((x) => x.kind === 'phenomenon').map((tag) =>
