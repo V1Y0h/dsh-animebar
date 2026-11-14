@@ -334,22 +334,30 @@ window.__ModuleLoader__.load({
         return String(Math.floor(v / 60)).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0');
       };
 
-      const loadCaptures = useCallback(async () => {
+      const loadCaptures = useCallback(async (silent) => {
         try {
           const res = await fetch('/api/animebar/captures', { credentials: 'same-origin' });
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const data = await res.json();
           setCaptures(Array.isArray(data.items) ? data.items : []);
         } catch (e) {
-          setCaptures([]);
-          setToast(t('读取捕获失败', 'Cannot load captures', '取得に失敗') + ': ' + String(e.message || e));
+          // 轮询失败不刷屏，只在用户主动操作时报
+          if (!silent) {
+            setCaptures([]);
+            setToast(t('读取捕获失败', 'Cannot load captures', '取得に失敗') + ': ' + String(e.message || e));
+          }
         }
       }, [lang]);
 
+      // 捕获是外部（IINA）写进文件的，面板自己不会收到通知，
+      // 所以：进入复盘页就拉一次，停留期间每 4 秒轮询，离开即停。
       useEffect(() => {
-        if (open && tab === 'triage' && captures === null) loadCaptures();
-        if (open && tab === 'triage' && tags.length === 0) loadTags();
-      }, [open, tab, captures, tags.length, loadCaptures, loadTags]);
+        if (!open || tab !== 'triage') return undefined;
+        loadCaptures();
+        loadTags();
+        const timer = setInterval(() => loadCaptures(true), 4000);
+        return () => clearInterval(timer);
+      }, [open, tab, loadCaptures, loadTags]);
 
       const deleteCapture = async (id) => {
         if (!id) return;
