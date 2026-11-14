@@ -508,6 +508,12 @@ window.__ModuleLoader__.load({
         }
       };
 
+      // 筛选栏用的芯片：被删过一次，导致新番页一打开就 ReferenceError
+      const chip = (label, active, onClick, key) => h('button', {
+        key, type: 'button', onClick,
+        style: active ? Object.assign({}, S.chip, S.chipOn) : S.chip,
+      }, label);
+
       const addNote = (title) => {
         const entry = {
           id: String(Date.now()) + Math.random().toString(16).slice(2, 6),
