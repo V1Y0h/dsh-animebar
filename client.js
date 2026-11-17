@@ -685,21 +685,72 @@ window.__ModuleLoader__.load({
         }
       }, [archiveLoaded]);
 
+      // 档案：数据来自 Mac 端生成的共享文件。样式走宿主主题变量，
+      // 行结构参照宿主的列表页（封面 + 主信息 + 右侧操作）
       const archiveView = () => {
-        if (!archive.length) return h('div', { style: S.status }, t('档案为空，先在 Mac 端打开一次面板生成', 'Archive empty — open the Mac panel once to generate it', 'アーカイブが空です'));
-        return h('div', { style: S.list },
-          archive.map((w) => h('div', { key: 'ar-' + w.url, style: S.row },
+        if (!archive.length) {
+          return h('div', { style: S.status },
+            t('档案为空，先在 Mac 端打开一次面板生成', 'Archive empty — open the Mac panel once to generate it', 'アーカイブが空です'));
+        }
+        const rowBorder = { borderBottom: '1px solid var(--dsw-alias-separator, #1e293b)' };
+        const actStyle = {
+          border: '1px solid var(--dsw-alias-separator, #1e293b)',
+          background: 'transparent',
+          color: 'var(--dsw-alias-label-secondary, #94a3b8)',
+          borderRadius: 6, fontSize: 10, padding: '3px 7px',
+          cursor: 'pointer', flex: '0 0 auto', textDecoration: 'none', lineHeight: 1.4,
+        };
+        const copyJa = async (title) => {
+          try {
+            await navigator.clipboard.writeText(title);
+            setToast(t('已复制日文名', 'Japanese title copied', '日本語題名をコピーしました'));
+          } catch (e) {
+            setToast(t('复制失败', 'Copy failed', 'コピーできませんでした'));
+          }
+        };
+        return h('div', { style: { display: 'flex', flexDirection: 'column' } },
+          archive.map((w) => h('div', {
+            key: 'ar-' + w.url,
+            style: Object.assign({
+              display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px',
+            }, rowBorder),
+          },
+            w.cover
+              ? h('img', { src: w.cover, alt: '', loading: 'lazy', style: S.cover })
+              : h('div', {
+                  style: Object.assign({}, S.coverBox, {
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--dsw-alias-label-tertiary, #475569)', fontSize: 14,
+                  }),
+                }, '▤'),
+            h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: 1 } },
+              h('p', {
+                style: {
+                  margin: 0, fontSize: 12.5, lineHeight: 1.35,
+                  color: 'var(--dsw-alias-label-primary, #e2e8f0)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                },
+                title: w.title,
+              }, w.bgm_cn || w.title),
+              h('span', {
+                style: {
+                  fontSize: 11, color: 'var(--dsw-alias-label-secondary, #94a3b8)',
+                  fontVariantNumeric: 'tabular-nums',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                },
+              }, [String(w.date || '').slice(0, 4), w.publisher].filter(Boolean).join(' · ')),
+            ),
             h('a', {
               href: w.url, target: '_blank', rel: 'noopener noreferrer',
-              style: { display: 'flex', flex: 1, gap: 9, alignItems: 'center', textDecoration: 'none', color: 'inherit', minWidth: 0 },
-            },
-              h('div', { style: S.coverBox },
-                w.cover
-                  ? h('img', { src: w.cover, alt: '', loading: 'lazy', style: S.cover })
-                  : h('div', { style: Object.assign({}, S.coverBox, { display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 14 }) }, '▤')),
-              h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: 2 } },
-                h('p', { style: S.title }, w.bgm_cn || w.title),
-                h('span', { style: S.score }, [String(w.date || '').slice(0, 4), w.publisher].filter(Boolean).join(' · ')))))));
+              style: actStyle,
+              title: t('在 MADB 打开', 'Open in MADB', 'MADB で開く'),
+            }, 'MADB'),
+            h('button', {
+              type: 'button', style: actStyle,
+              title: t('复制日文名', 'Copy Japanese title', '日本語題名をコピー'),
+              onClick: () => copyJa(w.title),
+            }, t('复制日名', 'JA', '日題')),
+          )));
       };
 
       const triageView = () => {
