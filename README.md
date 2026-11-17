@@ -100,7 +100,7 @@ bundle 那一行支持 `config`：
 
 ### 许可
 
-MIT。图标是作者本人绘制。
+MIT。
 
 ---
 
@@ -167,4 +167,4 @@ reach the model context — they are written only when the panel saves that reco
 
 ### License
 
-MIT. The icon is the author's own artwork.
+MIT. 
