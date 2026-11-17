@@ -715,7 +715,8 @@ window.__ModuleLoader__.load({
               display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px',
             }, rowBorder),
           },
-            w.cover
+            h('div', { style: S.coverBox },
+              w.cover
               ? h('img', { src: w.cover, alt: '', loading: 'lazy', style: S.cover })
               : h('div', {
                   style: Object.assign({}, S.coverBox, {
@@ -723,6 +724,7 @@ window.__ModuleLoader__.load({
                     color: 'var(--dsw-alias-label-tertiary, #475569)', fontSize: 14,
                   }),
                 }, '▤'),
+            ),
             h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: 1 } },
               h('p', {
                 style: {
