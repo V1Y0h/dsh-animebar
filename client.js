@@ -72,6 +72,7 @@ window.__ModuleLoader__.load({
             title: it.name_cn || it.name,
             orig: it.name,
             score: (it.rating && it.rating.score) || 0,
+            syo: it.syo || null,
             pop: (it.rating && it.rating.total) || 0,
             img: (it.images && (it.images.common || it.images.large)) || '',
             wd: (day.weekday && day.weekday.id) || 0,
@@ -939,6 +940,10 @@ window.__ModuleLoader__.load({
                         h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: 2 } },
                           h('p', { style: S.title }, titleText(it)),
                           h('span', { style: S.score }, scoreMap[it.id] || ('BGM ' + (it.score ? it.score.toFixed(1) : '—'))),
+                          it.syo
+                            ? h('span', { style: S.score, title: it.syo.channel || t('放送频道', 'channel', '放送局') },
+                                (lang === 'en' ? DAYS_EN : lang === 'ja' ? DAYS_JA : DAYS)[it.syo.weekday - 1] + ' ' + it.syo.time)
+                            : null,
                         ),
                       ),
                       h('button', {

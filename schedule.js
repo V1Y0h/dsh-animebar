@@ -85,6 +85,18 @@ async function classifyOne(id, today) {
 }
 
 // 返回过滤后的 Bangumi 放送表（结构不变，前端无需改动字段）
+// Mac 端生成页面时会把匹配好的放送时间写到这里。
+// 这里只读取，不在 JS 里重写标题匹配——两套实现必然漂移。
+async function readSharedTimes(dir) {
+  try {
+    const raw = await readFile(join(dir, "shared", "schedule-times.json"), "utf8");
+    const data = JSON.parse(raw);
+    return data && typeof data.items === "object" ? data.items : {};
+  } catch {
+    return {};
+  }
+}
+
 export async function filteredCalendar(options = {}) {
   const dir = options.dir || DEFAULT_DIR;
   const today = new Date();
@@ -113,14 +125,19 @@ export async function filteredCalendar(options = {}) {
     await saveCache(dir, cache.entries);
   }
 
+  const times = await readSharedTimes(dir);
   const dropped = [];
   const kept = [];
   for (const day of calendar) {
     const items = [];
     for (const it of day?.items ?? []) {
       const kind = cache.entries[String(it?.id)]?.kind ?? UNKNOWN;
-      if (kind === ENDED || kind === BATCH) dropped.push({ id: it.id, kind });
-      else items.push(it);
+      if (kind === ENDED || kind === BATCH) {
+        dropped.push({ id: it.id, kind });
+        continue;
+      }
+      const syo = times[String(it?.id)];
+      items.push(syo ? { ...it, syo } : it);
     }
     kept.push({ ...day, items });
   }
