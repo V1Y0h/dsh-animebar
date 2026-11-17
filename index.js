@@ -190,14 +190,17 @@ export function apply(ctx, config) {
       methods: ["GET"],
       requestBody: "buffered",
       fetch: async () => {
-        try {
-          const path = join(config?.dataDir || join(homedir(), "Library", "Application Support", "AnimeBar"),
-                            "shared", "madb-early.json");
-          const raw = await readFile(path, "utf8");
-          return json(200, { ok: true, items: JSON.parse(raw) });
-        } catch {
-          return json(200, { ok: true, items: [] });
+        const dir = config?.dataDir || join(homedir(), "Library", "Application Support", "AnimeBar");
+        // 优先用 Mac 端生成的最新版本；没装 App 就回落到包内快照
+        for (const path of [join(dir, "shared", "madb-early.json"),
+                            join(import.meta.dirname, "data", "madb-early.json")]) {
+          try {
+            return json(200, { ok: true, items: JSON.parse(await readFile(path, "utf8")) });
+          } catch {
+            // 换下一个来源
+          }
         }
+        return json(200, { ok: true, items: [] });
       },
     });
 
