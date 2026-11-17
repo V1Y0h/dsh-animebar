@@ -733,7 +733,7 @@ window.__ModuleLoader__.load({
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 },
                 title: w.title,
-              }, w.bgm_cn || w.title),
+              }, lang === 'en' ? (w.en || w.title) : lang === 'ja' ? w.title : (w.zh || w.title)),
               h('span', {
                 style: {
                   fontSize: 11, color: 'var(--dsw-alias-label-secondary, #94a3b8)',
