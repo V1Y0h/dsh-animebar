@@ -219,6 +219,8 @@ window.__ModuleLoader__.load({
         try { return localStorage.getItem('animebar.hint') !== 'seen'; } catch (e) { return true; }
       });
       const [tab, setTab] = useState('tv');
+      const [archive, setArchive] = useState([]);
+      const [archiveLoaded, setArchiveLoaded] = useState(false);
       const [tv, setTv] = useState(null);
       const [movies, setMovies] = useState(null);
       const [error, setError] = useState('');
@@ -670,6 +672,36 @@ window.__ModuleLoader__.load({
         );
       };
 
+      // 档案由 Mac 端生成并放进共享目录，这里只读
+      const loadArchive = useCallback(async () => {
+        if (archiveLoaded) return;
+        setArchiveLoaded(true);
+        try {
+          const res = await fetch('/api/animebar/archive', { credentials: 'same-origin' });
+          const data = await res.json();
+          setArchive(Array.isArray(data.items) ? data.items : []);
+        } catch (e) {
+          setArchive([]);
+        }
+      }, [archiveLoaded]);
+
+      const archiveView = () => {
+        if (!archive.length) return h('div', { style: S.status }, t('档案为空，先在 Mac 端打开一次面板生成', 'Archive empty — open the Mac panel once to generate it', 'アーカイブが空です'));
+        return h('div', { style: S.list },
+          archive.map((w) => h('div', { key: 'ar-' + w.url, style: S.row },
+            h('a', {
+              href: w.url, target: '_blank', rel: 'noopener noreferrer',
+              style: { display: 'flex', flex: 1, gap: 9, alignItems: 'center', textDecoration: 'none', color: 'inherit', minWidth: 0 },
+            },
+              h('div', { style: S.coverBox },
+                w.cover
+                  ? h('img', { src: w.cover, alt: '', loading: 'lazy', style: S.cover })
+                  : h('div', { style: Object.assign({}, S.coverBox, { display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 14 }) }, '▤')),
+              h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: 2 } },
+                h('p', { style: S.title }, w.bgm_cn || w.title),
+                h('span', { style: S.score }, [String(w.date || '').slice(0, 4), w.publisher].filter(Boolean).join(' · ')))))));
+      };
+
       const triageView = () => {
         if (captures === null) {
           return h('div', { style: S.status }, t('正在读取…', 'Loading…', '読み込み中…'));
@@ -886,6 +918,7 @@ window.__ModuleLoader__.load({
             h('div', { style: S.tabs },
               h('button', { type: 'button', onClick: () => setTab('tv'), style: Object.assign({}, S.tab, tab === 'tv' ? S.tabOn : null) }, t('新番', 'TV', '新作')),
               h('button', { type: 'button', onClick: () => setTab('movie'), style: Object.assign({}, S.tab, tab === 'movie' ? S.tabOn : null) }, t('剧场版', 'Films', '劇場版')),
+              h('button', { type: 'button', onClick: () => { setTab('archive'); loadArchive(); }, style: Object.assign({}, S.tab, tab === 'archive' ? S.tabOn : null) }, t('档案', 'Archive', 'アーカイブ')),
               h('button', { type: 'button', onClick: () => setTab('notes'), style: Object.assign({}, S.tab, tab === 'notes' ? S.tabOn : null) }, t('记录', 'Notes', '記録')),
             ),
             ['zh', 'en', 'ja'].map((l) => h('button', {
@@ -899,7 +932,7 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', title: t('关闭', 'Close', '閉じる'), style: S.icon, onClick: () => setOpen(false) }, '×'),
           ),
 
-          tab === 'notes' ? null : h('div', { style: S.filters },
+          (tab === 'notes' || tab === 'archive') ? null : h('div', { style: S.filters },
             tab === 'tv' ? chip(t('全部', 'All', '全て'), wd === 0, () => setWd(0), 'wd0') : null,
             tab === 'tv' ? DAYS.map((d, i) => chip(lang === 'en' ? DAYS_EN[i] : lang === 'ja' ? DAYS_JA[i] : d, wd === i + 1, () => setWd(i + 1), 'wd' + (i + 1))) : null,
             chip(t('按热度', 'Popular', '人気順'), sortKey === 'pop', () => setSortKey('pop'), 'k1'),
@@ -912,7 +945,9 @@ window.__ModuleLoader__.load({
             }),
           ),
 
-          tab === 'notes'
+          tab === 'archive'
+            ? archiveView()
+            : tab === 'notes'
             ? triageView()
             : error
               ? h('div', { style: S.status }, error)

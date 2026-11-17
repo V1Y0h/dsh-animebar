@@ -3,6 +3,9 @@ import { readCaptures, readAllRaw, appendDeletedCapture } from "./captures.js";
 import { buildTriageRecord, buildClearRecord, appendTriageRecord } from "./triage.js";
 import { readTags, addTag, deleteTag } from "./tags.js";
 import { filteredCalendar } from "./schedule.js";
+import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 export const name = "animebar";
 export const inject = ["tools"];
@@ -177,6 +180,23 @@ export function apply(ctx, config) {
           return json(200, await filteredCalendar({ dir: config?.dataDir || undefined }));
         } catch (err) {
           return json(502, { ok: false, error: String(err?.message || err) });
+        }
+      },
+    });
+
+    // 档案：内容由 Mac 端生成并写入共享目录，这里只读
+    connCtx.connection.fetch.register({
+      path: "/api/animebar/archive",
+      methods: ["GET"],
+      requestBody: "buffered",
+      fetch: async () => {
+        try {
+          const path = join(config?.dataDir || join(homedir(), "Library", "Application Support", "AnimeBar"),
+                            "shared", "madb-early.json");
+          const raw = await readFile(path, "utf8");
+          return json(200, { ok: true, items: JSON.parse(raw) });
+        } catch {
+          return json(200, { ok: true, items: [] });
         }
       },
     });
