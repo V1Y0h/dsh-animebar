@@ -71,6 +71,8 @@ bundle 那一行支持 `config`：
 
 - 工具 `anime_captures` — 按时间倒序列出捕获，只返回公开字段（时间码、来源、片名、集数、现象标签）
 - 面板「记录」页 — 捕获与手记混排，补集数、标签、维度与反思，可按季度导出复盘草稿
+- 面板「档案」页 — 1969–1995 年的影像软件（OVA / LD / VHS 时代），三语标题、封面、
+  一键复制日文原名；数据由 Mac 端生成后共享，本插件不重复拉取
 - 标签是英文 slug + 中日英三语名，内置 25 条，可自建；自建的能删，内置的不能
 
 数据全在本地 `~/Library/Application Support/AnimeBar/`：
@@ -144,6 +146,8 @@ mark the current timecode, then review these captures in the panel.
   title, episode, observed phenomena)
 - Records tab — captures and free-form notes share one list; add episode, tags, dimensions
   and reflection; export a season draft
+- Archive tab — video releases from 1969–1995 (the OVA / LD / VHS era) with trilingual
+  titles, covers and one-click copy of the Japanese title
 
 Tags are English slugs with zh/en/ja labels: 25 built in, and custom ones can be added.
 Custom tags are deletable, built-in ones are not.
@@ -167,4 +171,33 @@ reach the model context — they are written only when the panel saves that reco
 
 ### License
 
-MIT. 
+MIT.
+
+---
+
+## 日本語
+
+DeepSeek Harness 用のアニメツール。今期の番組表と、IINA で記録した時間碼の振り返り。
+
+### 機能
+
+- ツール `anime_today` — Bangumi の放送表から指定曜日の作品を評価順で返す
+- ツール `anime_captures` — IINA などで記録した時間碼を新しい順で返す（公開情報のみ）
+- パネル「記録」— 記録とメモを一覧で管理。話数・タグ・評価軸・振り返りを追記できる
+- パネル「アーカイブ」— 1969〜1995 年の映像ソフト。中国語・英語・日本語のタイトル
+
+放送済み・一括配信の作品は自動的に除外される。正確な放送時刻は
+[AnimeBar.app](https://github.com/V1Y0h/AnimeBar) が生成した共有ファイルから読む。
+
+### プライバシー
+
+`my_take`・`speculations`・`evidence` は**ツールの戻り値に含まれない**ため、
+モデルのコンテキストにも入らない。
+
+### データの場所
+
+`~/Library/Application Support/AnimeBar/` にすべてローカル保存。
+
+### ライセンス
+
+MIT
