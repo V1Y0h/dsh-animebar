@@ -2,6 +2,7 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import { readCaptures, readAllRaw, appendDeletedCapture } from "./captures.js";
 import { buildTriageRecord, buildClearRecord, appendTriageRecord } from "./triage.js";
 import { readTags, addTag, deleteTag } from "./tags.js";
+import { filteredCalendar } from "./schedule.js";
 
 export const name = "animebar";
 export const inject = ["tools"];
@@ -67,7 +68,7 @@ export function apply(ctx, config) {
           .slice(0, limit);
         return { kind: "movie", total: films.length, items: films };
       }
-      const data = await fetchCalendar();
+      const { calendar: data } = await filteredCalendar({ dir: config?.dataDir || undefined });
       const weekday = Number(args?.weekday) || new Date().getDay() || 7;
       const items = data
         .filter((day) => day?.weekday?.id === weekday)
@@ -166,6 +167,20 @@ export function apply(ctx, config) {
     } catch (e) {
       console.error("animebar: 路由注册失败", e);
     }
+    // 面板用的放送表：宿主已过滤掉非周更条目，前端不必自己拉分集数据
+    connCtx.connection.fetch.register({
+      path: "/api/animebar/schedule",
+      methods: ["GET"],
+      requestBody: "buffered",
+      fetch: async () => {
+        try {
+          return json(200, await filteredCalendar({ dir: config?.dataDir || undefined }));
+        } catch (err) {
+          return json(502, { ok: false, error: String(err?.message || err) });
+        }
+      },
+    });
+
     // 标签注册表：面板只从 slug 里选，不自由输入
     connCtx.connection.fetch.register({
       path: "/api/animebar/tags",

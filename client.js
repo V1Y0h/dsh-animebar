@@ -49,9 +49,21 @@ window.__ModuleLoader__.load({
     }
 
     async function fetchTv() {
-      const res = await fetch('https://api.bgm.tv/calendar', { headers: UA });
-      if (!res.ok) throw new Error('Bangumi ' + res.status);
-      const data = await res.json();
+      // 优先走宿主：它已过滤掉已完结/一次性放出的条目（前端拉分集数据太慢）
+      let data = null;
+      try {
+        const res = await fetch('/api/animebar/schedule', { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('route ' + res.status);
+        const payload = await res.json();
+        if (Array.isArray(payload.calendar)) data = payload.calendar;
+      } catch (e) {
+        // 宿主路由不可用时退回直连 Bangumi：表仍可用，只是不过滤
+      }
+      if (data === null) {
+        const res = await fetch('https://api.bgm.tv/calendar', { headers: UA });
+        if (!res.ok) throw new Error('Bangumi ' + res.status);
+        data = await res.json();
+      }
       const out = [];
       for (const day of data) {
         for (const it of day.items || []) {

@@ -15,6 +15,7 @@
     "captures.js",
     "triage.js",
     "tags.js",
+    "schedule.js",
     "cordis.patch.yml",
     "locale/*.json",
     "docs",
