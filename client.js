@@ -708,7 +708,8 @@ window.__ModuleLoader__.load({
             setToast(t('复制失败', 'Copy failed', 'コピーできませんでした'));
           }
         };
-        return h('div', { style: { display: 'flex', flexDirection: 'column' } },
+        // 面板本身 overflow:hidden，列表必须自带滚动区，否则只会被裁掉
+        return h('div', { style: Object.assign({}, S.list, { display: 'flex', flexDirection: 'column' }) },
           archive.map((w) => h('div', {
             key: 'ar-' + w.url,
             style: Object.assign({
