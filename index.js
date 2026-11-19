@@ -10,6 +10,72 @@ import { join } from "node:path";
 export const name = "animebar";
 export const inject = ["tools"];
 
+// 反共识打捞：只看 Bangumi /calendar 已返回的字段，不额外请求。
+// 信号含义：
+//   polarized  评价撕裂（σ 高）        trainwreck 高热低分
+//   blindspot  几乎无人评分            lowprofile 低分且不热
+//   overlooked 及格线边缘、低关注      consensus  主流高分（打捞模式下垫底）
+const SALVAGE = {
+  SIGMA: 1.9,      // 标准差阈值
+  MIN_VOTES: 15,   // 低于此视为盲区
+  HOT_VOTES: 80,   // 高热低分的评分人数门槛
+  HOT_DOING: 300,  // 或「在看」人数
+  OVERLOOKED_TOP: 6.9,
+  OVERLOOKED_VOTES: 80,
+};
+
+function scoreStdDev(rating) {
+  const total = Number(rating?.total) || 0;
+  const count = rating?.count;
+  const mean = Number(rating?.score) || 0;
+  if (!count || !total || total < 10) return 0;
+  let sum = 0;
+  for (let s = 1; s <= 10; s += 1) {
+    sum += (Number(count[String(s)]) || 0) * (s - mean) ** 2;
+  }
+  return Math.sqrt(sum / total);
+}
+
+function classifySalvage(item) {
+  const rating = item.rating || {};
+  const score = Number(rating.score) || 0;
+  const votes = Number(rating.total) || 0;
+  const doing = Number(item.collection?.doing) || 0;
+  const sigma = scoreStdDev(rating);
+
+  if (score === 0 || votes < SALVAGE.MIN_VOTES) {
+    return {
+      bucket: 2, signal: "blindspot",
+      reason: votes === 0 ? "暂无评分" : `仅 ${votes} 人评分 · 视线盲区`,
+    };
+  }
+  if (sigma >= SALVAGE.SIGMA) {
+    return {
+      bucket: 1, signal: "polarized",
+      reason: `均分 ${score.toFixed(1)} · 评价撕裂 (σ=${sigma.toFixed(2)}, ${votes}人)`,
+    };
+  }
+  if (score < 6.0) {
+    if (votes >= SALVAGE.HOT_VOTES || doing >= SALVAGE.HOT_DOING) {
+      return {
+        bucket: 1, signal: "trainwreck",
+        reason: `低分 ${score.toFixed(1)} · ${votes}人评分 / ${doing}人在看`,
+      };
+    }
+    return {
+      bucket: 3, signal: "lowprofile",
+      reason: `低分 ${score.toFixed(1)} · 关注度低 (${votes}人)`,
+    };
+  }
+  if (score < SALVAGE.OVERLOOKED_TOP && votes < SALVAGE.OVERLOOKED_VOTES) {
+    return {
+      bucket: 3, signal: "overlooked",
+      reason: `边缘均分 ${score.toFixed(1)} · 仅 ${votes} 人关注`,
+    };
+  }
+  return { bucket: 4, signal: "consensus", reason: `主流共识 ${score.toFixed(1)} (${votes}人)` };
+}
+
 const CALENDAR = "https://api.bgm.tv/calendar";
 const UA = "dsh-animebar/0.1 (+https://github.com/)";
 
@@ -58,6 +124,18 @@ export function apply(ctx, config) {
         enum: ["tv", "movie"],
         description: "tv lists the weekly broadcast schedule; movie lists theatrical films sorted by rating.",
       },
+      mode: {
+        type: "string",
+        enum: ["standard", "salvage"],
+        description:
+          "standard ranks by score. salvage surfaces ignored or controversial titles: "
+          + "polarized (ratings split), trainwreck (high attention, low score), "
+          + "blindspot (barely rated), lowprofile, overlooked. Each item carries signal and reason.",
+      },
+      hideConsensus: {
+        type: "boolean",
+        description: "In salvage mode, drop mainstream high-score titles so only salvaged items remain.",
+      },
     },
     output: {
       schema: { type: "object", additionalProperties: true },
@@ -73,9 +151,37 @@ export function apply(ctx, config) {
       }
       const { calendar: data } = await filteredCalendar({ dir: config?.dataDir || undefined });
       const weekday = Number(args?.weekday) || new Date().getDay() || 7;
-      const items = data
+      const raw = data
         .filter((day) => day?.weekday?.id === weekday)
-        .flatMap((day) => day.items ?? [])
+        .flatMap((day) => day.items ?? []);
+
+      if (args?.mode === "salvage") {
+        // 打捞模式：按桶排，桶内规则见 classifySalvage；不加评分下限，
+        // 否则「低分但有故事」的作品第一刀就被滤掉了
+        const ranked = raw.map((item) => {
+          const meta = classifySalvage(item);
+          return {
+            title: item.name_cn || item.name,
+            original: item.name_cn ? item.name : "",
+            score: Number(item.rating?.score) || 0,
+            votes: Number(item.rating?.total) || 0,
+            doing: Number(item.collection?.doing) || 0,
+            signal: meta.signal,
+            reason: meta.reason,
+            url: item.url,
+            _bucket: meta.bucket,
+            _sub: meta.signal === "blindspot" ? (item.rating?.total || 0)
+              : -(item.rating?.total || 0) + (item.rating?.score || 0),
+          };
+        })
+          .filter((item) => args?.hideConsensus ? item.signal !== "consensus" : true)
+          .sort((a, b) => (a._bucket !== b._bucket ? a._bucket - b._bucket : a._sub - b._sub))
+          .slice(0, limit)
+          .map(({ _bucket, _sub, ...rest }) => rest);
+        return { weekday, mode: "salvage", total: ranked.length, items: ranked };
+      }
+
+      const items = raw
         .map((item) => ({
           title: item.name_cn || item.name,
           original: item.name_cn ? item.name : undefined,
