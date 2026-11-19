@@ -782,7 +782,7 @@ window.__ModuleLoader__.load({
               h('p', {
                 style: {
                   margin: 0, fontSize: 12.5, lineHeight: 1.35,
-                  color: 'var(--dsw-alias-label-primary, #e2e8f0)',
+                  color: 'inherit',   // 不写死颜色：浅色主题下浅灰字会看不见
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 },
                 title: w.title,
