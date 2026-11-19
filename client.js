@@ -684,6 +684,39 @@ window.__ModuleLoader__.load({
         );
       };
 
+      // 理由行按当前语言拼：宿主只给信号和数字
+      const salvageReason = (it) => {
+        const st = it.salvageStats || {};
+        const sc = Number(st.score || it.score || 0);
+        const v = Number(st.votes || it.pop || 0);
+        const d = Number(st.doing || 0);
+        const sd = Number(st.sigma || 0);
+        switch (it.signal) {
+          case 'polarized':
+            return t(`均分 ${sc.toFixed(1)} · 评价撕裂 (σ=${sd.toFixed(2)}, ${v}人)`,
+                     `avg ${sc.toFixed(1)} · ratings split (σ=${sd.toFixed(2)}, ${v} votes)`,
+                     `平均 ${sc.toFixed(1)} · 評価が真っ二つ (σ=${sd.toFixed(2)}, ${v}人)`);
+          case 'trainwreck':
+            return t(`低分 ${sc.toFixed(1)} · ${v}人评分 / ${d}人在看`,
+                     `low ${sc.toFixed(1)} · ${v} votes / ${d} watching`,
+                     `低評価 ${sc.toFixed(1)} · ${v}人が評価 / ${d}人が視聴中`);
+          case 'blindspot':
+            return v === 0
+              ? t('暂无评分', 'no ratings yet', '評価なし')
+              : t(`仅 ${v} 人评分 · 视线盲区`, `only ${v} votes · off the radar`, `わずか ${v}人 · 圏外`);
+          case 'lowprofile':
+            return t(`低分 ${sc.toFixed(1)} · 关注度低 (${v}人)`,
+                     `low ${sc.toFixed(1)} · little attention (${v})`,
+                     `低評価 ${sc.toFixed(1)} · 注目度低 (${v}人)`);
+          case 'overlooked':
+            return t(`边缘均分 ${sc.toFixed(1)} · 仅 ${v} 人关注`,
+                     `borderline ${sc.toFixed(1)} · only ${v} votes`,
+                     `平均 ${sc.toFixed(1)} · わずか ${v}人`);
+          default:
+            return '';
+        }
+      };
+
       const toggleSalvage = () => {
         const next = !salvage;
         setSalvage(next);
@@ -1017,8 +1050,8 @@ window.__ModuleLoader__.load({
             tab === 'tv' ? chip(t('全部', 'All', '全て'), wd === 0, () => setWd(0), 'wd0') : null,
             tab === 'tv' ? DAYS.map((d, i) => chip(lang === 'en' ? DAYS_EN[i] : lang === 'ja' ? DAYS_JA[i] : d, wd === i + 1, () => setWd(i + 1), 'wd' + (i + 1))) : null,
             salvage
-              ? chip(t('打捞中', 'Salvage on', '救済中') + '·2', true, () => toggleSalvage(), 'sv')
-              : chip(t('打捞', 'Salvage', '救済') + '·2', false, () => toggleSalvage(), 'sv'),
+              ? chip(t('打捞中', 'Rediscovering', '発掘中'), true, () => toggleSalvage(), 'sv')
+              : chip(t('打捞', 'Rediscover', '発掘'), false, () => toggleSalvage(), 'sv'),
             salvage ? null : chip(t('按热度', 'Popular', '人気順'), sortKey === 'pop', () => setSortKey('pop'), 'k1'),
             salvage ? null : chip(t('按最新', 'Newest', '新着順'), sortKey === 'date', () => setSortKey('date'), 'k2'),
             h('input', {
@@ -1059,8 +1092,8 @@ window.__ModuleLoader__.load({
                         h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: 2 } },
                           h('p', { style: S.title }, titleText(it)),
                           h('span', { style: S.score }, scoreMap[it.id] || ('BGM ' + (it.score ? it.score.toFixed(1) : '—'))),
-                          it.reason
-                            ? h('span', { style: { fontSize: 10.5, color: 'var(--dsw-alias-label-tertiary, #64748b)' } }, it.reason)
+                          it.signal
+                            ? h('span', { style: { fontSize: 10.5, color: 'var(--dsw-alias-label-tertiary, #64748b)' } }, salvageReason(it))
                             : null,
                           it.syo
                             ? h('span', { style: S.score, title: it.syo.channel || t('放送频道', 'channel', '放送局') },

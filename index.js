@@ -321,7 +321,19 @@ export function apply(ctx, config) {
               .filter((it) => byId.has(it.id))
               .map((it) => {
                 const r = byId.get(it.id);
-                return { ...it, signal: r.signal, reason: r.reason, salvageOrder: r.order };
+                return {
+                  ...it,
+                  signal: r.signal,
+                  reason: r.reason,        // 中文，给工具和模型用
+                  // 数字也给出去，前端按语言自己拼文案
+                  salvageStats: {
+                    score: Number(it.rating?.score) || 0,
+                    votes: Number(it.rating?.total) || 0,
+                    doing: Number(it.collection?.doing) || 0,
+                    sigma: Number(scoreStdDev(it.rating || {}).toFixed(2)),
+                  },
+                  salvageOrder: r.order,
+                };
               })
               .sort((a, b) => a.salvageOrder - b.salvageOrder),
           }));
