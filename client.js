@@ -9,7 +9,7 @@ window.__ModuleLoader__.load({
     const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
     const DAYS_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const DAYS_JA = ['月', '火', '水', '木', '金', '土', '日'];
-    const CACHE_KEY = 'animebar.panel.cache.v2';
+    const CACHE_KEY = 'animebar.panel.cache.v3';   // v3：缓存里带上模式
     const EN_CACHE = 'animebar.entitles.v1';
     const NOTES_KEY = 'animebar.notes.v1';
     const PHENOMENA = ['静止画多', '精度落差', '画风突变', '重复镜头', '演出神回'];
@@ -35,12 +35,16 @@ window.__ModuleLoader__.load({
 
 
 
-    function readCache() {
+    // 缓存必须按模式隔离：标准视图和打捞视图是不同的数据
+    function readCache(mode) {
       try {
         const raw = localStorage.getItem(CACHE_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        return parsed && parsed.day === new Date().toDateString() ? parsed : null;
+        if (!parsed) return null;
+        if (parsed.day !== new Date().toDateString()) return null;
+        if ((parsed.mode || 'standard') !== (mode || 'standard')) return null;
+        return parsed;
       } catch (e) { return null; }
     }
 
@@ -896,8 +900,9 @@ window.__ModuleLoader__.load({
       }, [toast]);
 
       const load = useCallback(async (force) => {
+        const modeNow = salvage ? 'salvage' : 'standard';
         if (!force) {
-          const cached = readCache();
+          const cached = readCache(modeNow);
           if (cached) {
             setTv(cached.tv || []);
             setMovies(cached.movies || []);
@@ -908,7 +913,7 @@ window.__ModuleLoader__.load({
         try {
           const tvData = await fetchTv();
           setTv(tvData);
-          writeCache({ tv: tvData, movies });
+          writeCache({ tv: tvData, movies, mode: salvage ? 'salvage' : 'standard' });
           // 剧场版单独抓，失败不影响新番
           try {
             const movieData = await fetchMovies();
