@@ -688,7 +688,7 @@ window.__ModuleLoader__.load({
         const next = !salvage;
         setSalvage(next);
         try { localStorage.setItem('animebar.panel.salvage', next ? '1' : '0'); } catch (e) { /* 忽略 */ }
-        load(true);   // 重新拉一次，拿回带 signal 的数据
+        load(true, next ? 'salvage' : 'standard');   // 显式带上新模式，避免闭包里是旧值
       };
 
       // 档案由 Mac 端生成并放进共享目录，这里只读
@@ -901,8 +901,10 @@ window.__ModuleLoader__.load({
         return () => clearTimeout(timer);
       }, [toast]);
 
-      const load = useCallback(async (force) => {
-        const modeNow = salvage ? 'salvage' : 'standard';
+      // mode 必须显式传入：useCallback 的依赖里没有 salvage，闭包会拿到旧值，
+      // 否则切打捞时拉的是标准数据、切回标准时拉的是打捞数据（两个模式正好对调）
+      const load = useCallback(async (force, mode) => {
+        const modeNow = mode || (salvage ? 'salvage' : 'standard');
         if (!force) {
           const cached = readCache(modeNow);
           if (cached) {
