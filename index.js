@@ -76,6 +76,25 @@ function classifySalvage(item) {
   return { bucket: 4, signal: "consensus", reason: `主流共识 ${score.toFixed(1)} (${votes}人)` };
 }
 
+function sortSalvage(items, limit) {
+  return items
+    .map((item) => {
+      const meta = classifySalvage(item);
+      const votes = Number(item.rating?.total) || 0;
+      const score = Number(item.rating?.score) || 0;
+      return {
+        item,
+        bucket: meta.bucket,
+        signal: meta.signal,
+        reason: meta.reason,
+        // 桶内：盲区按人数升序（越冷越前），其余按人气降序
+        sub: meta.signal === "blindspot" ? votes : -votes + score,
+      };
+    })
+    .sort((a, b) => (a.bucket !== b.bucket ? a.bucket - b.bucket : a.sub - b.sub))
+    .slice(0, limit);
+}
+
 const CALENDAR = "https://api.bgm.tv/calendar";
 const UA = "dsh-animebar/0.1 (+https://github.com/)";
 
@@ -281,9 +300,28 @@ export function apply(ctx, config) {
       path: "/api/animebar/schedule",
       methods: ["GET"],
       requestBody: "buffered",
-      fetch: async () => {
+      fetch: async (request) => {
         try {
-          return json(200, await filteredCalendar({ dir: config?.dataDir || undefined }));
+          const url = new URL(request?.url ?? "http://localhost/api/animebar/schedule");
+          const salvage = url.searchParams.get("mode") === "salvage";
+          const result = await filteredCalendar({ dir: config?.dataDir || undefined });
+          if (!salvage) return json(200, result);
+
+          // 打捞：整体重排，每个条目带上 signal 与 reason
+          const flat = result.calendar.flatMap((day) => day.items ?? []);
+          const ranked = sortSalvage(flat, flat.length);
+          const byId = new Map(ranked.map((r, i) => [r.item.id, { ...r, order: i }]));
+          const calendar = result.calendar.map((day) => ({
+            ...day,
+            items: (day.items ?? [])
+              .filter((it) => byId.has(it.id))
+              .map((it) => {
+                const r = byId.get(it.id);
+                return { ...it, signal: r.signal, reason: r.reason, salvageOrder: r.order };
+              })
+              .sort((a, b) => a.salvageOrder - b.salvageOrder),
+          }));
+          return json(200, { ...result, mode: "salvage", calendar });
         } catch (err) {
           return json(502, { ok: false, error: String(err?.message || err) });
         }

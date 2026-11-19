@@ -52,7 +52,7 @@ window.__ModuleLoader__.load({
       // 优先走宿主：它已过滤掉已完结/一次性放出的条目（前端拉分集数据太慢）
       let data = null;
       try {
-        const res = await fetch('/api/animebar/schedule', { credentials: 'same-origin' });
+        const res = await fetch('/api/animebar/schedule' + (salvage ? '?mode=salvage' : ''), { credentials: 'same-origin' });
         if (!res.ok) throw new Error('route ' + res.status);
         const payload = await res.json();
         if (Array.isArray(payload.calendar)) data = payload.calendar;
@@ -73,6 +73,8 @@ window.__ModuleLoader__.load({
             orig: it.name,
             score: (it.rating && it.rating.score) || 0,
             syo: it.syo || null,
+            signal: it.signal || '',
+            reason: it.reason || '',
             pop: (it.rating && it.rating.total) || 0,
             img: (it.images && (it.images.common || it.images.large)) || '',
             wd: (day.weekday && day.weekday.id) || 0,
@@ -226,6 +228,9 @@ window.__ModuleLoader__.load({
       const [error, setError] = useState('');
       const [wd, setWd] = useState(0);
       const [sortKey, setSortKey] = useState('pop');
+      const [salvage, setSalvage] = useState(() => {
+        try { return localStorage.getItem('animebar.panel.salvage') === '1'; } catch (e) { return false; }
+      });
       const [kw, setKw] = useState('');
       const [toast, setToast] = useState('');
       const [scoreMap, setScoreMap] = useState({});
@@ -672,6 +677,15 @@ window.__ModuleLoader__.load({
         );
       };
 
+      const toggleSalvage = () => {
+        setSalvage((v) => {
+          const next = !v;
+          try { localStorage.setItem('animebar.panel.salvage', next ? '1' : '0'); } catch (e) { /* 忽略 */ }
+          load(true);
+          return next;
+        });
+      };
+
       // 档案由 Mac 端生成并放进共享目录，这里只读
       const loadArchive = useCallback(async () => {
         if (archiveLoaded) return;
@@ -989,8 +1003,11 @@ window.__ModuleLoader__.load({
           (tab === 'notes' || tab === 'archive') ? null : h('div', { style: S.filters },
             tab === 'tv' ? chip(t('全部', 'All', '全て'), wd === 0, () => setWd(0), 'wd0') : null,
             tab === 'tv' ? DAYS.map((d, i) => chip(lang === 'en' ? DAYS_EN[i] : lang === 'ja' ? DAYS_JA[i] : d, wd === i + 1, () => setWd(i + 1), 'wd' + (i + 1))) : null,
-            chip(t('按热度', 'Popular', '人気順'), sortKey === 'pop', () => setSortKey('pop'), 'k1'),
-            chip(t('按最新', 'Newest', '新着順'), sortKey === 'date', () => setSortKey('date'), 'k2'),
+            salvage
+              ? chip(t('打捞中', 'Salvage on', '救済中'), true, () => toggleSalvage(), 'sv')
+              : chip(t('打捞', 'Salvage', '救済'), false, () => toggleSalvage(), 'sv'),
+            salvage ? null : chip(t('按热度', 'Popular', '人気順'), sortKey === 'pop', () => setSortKey('pop'), 'k1'),
+            salvage ? null : chip(t('按最新', 'Newest', '新着順'), sortKey === 'date', () => setSortKey('date'), 'k2'),
             h('input', {
               value: kw,
               placeholder: t('搜名字…', 'Search title…', '検索…'),
@@ -1029,6 +1046,9 @@ window.__ModuleLoader__.load({
                         h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: 2 } },
                           h('p', { style: S.title }, titleText(it)),
                           h('span', { style: S.score }, scoreMap[it.id] || ('BGM ' + (it.score ? it.score.toFixed(1) : '—'))),
+                          it.reason
+                            ? h('span', { style: { fontSize: 10.5, color: 'var(--dsw-alias-label-tertiary, #64748b)' } }, it.reason)
+                            : null,
                           it.syo
                             ? h('span', { style: S.score, title: it.syo.channel || t('放送频道', 'channel', '放送局') },
                                 (lang === 'en' ? DAYS_EN : lang === 'ja' ? DAYS_JA : DAYS)[it.syo.weekday - 1] + ' ' + it.syo.time)
