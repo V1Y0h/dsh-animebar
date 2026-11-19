@@ -52,16 +52,18 @@ window.__ModuleLoader__.load({
       try { localStorage.setItem(CACHE_KEY, JSON.stringify(Object.assign({ day: new Date().toDateString() }, data))); } catch (e) { /* 忽略 */ }
     }
 
-    async function fetchTv() {
+    async function fetchTv(mode) {
       // 优先走宿主：它已过滤掉已完结/一次性放出的条目（前端拉分集数据太慢）
       let data = null;
       try {
-        const res = await fetch('/api/animebar/schedule' + (salvage ? '?mode=salvage' : ''), { credentials: 'same-origin' });
+        const res = await fetch('/api/animebar/schedule' + (mode === 'salvage' ? '?mode=salvage' : ''), { credentials: 'same-origin' });
         if (!res.ok) throw new Error('route ' + res.status);
         const payload = await res.json();
         if (Array.isArray(payload.calendar)) data = payload.calendar;
       } catch (e) {
-        // 宿主路由不可用时退回直连 Bangumi：表仍可用，只是不过滤
+        // 不再静默回退：直连 Bangumi 会丢掉过滤、signal 和 reason，
+        // 表面上「有列表」实际是错的数据。之前正是这里吞掉了 ReferenceError。
+        throw new Error('番表接口不可用：' + (e && e.message ? e.message : e));
       }
       if (data === null) {
         const res = await fetch('https://api.bgm.tv/calendar', { headers: UA });
@@ -911,7 +913,7 @@ window.__ModuleLoader__.load({
         }
         setError('');
         try {
-          const tvData = await fetchTv();
+          const tvData = await fetchTv(modeNow);
           setTv(tvData);
           writeCache({ tv: tvData, movies, mode: salvage ? 'salvage' : 'standard' });
           // 剧场版单独抓，失败不影响新番
