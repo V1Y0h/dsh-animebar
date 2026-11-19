@@ -74,6 +74,7 @@ window.__ModuleLoader__.load({
             score: (it.rating && it.rating.score) || 0,
             syo: it.syo || null,
             signal: it.signal || '',
+            salvageOrder: typeof it.salvageOrder === 'number' ? it.salvageOrder : null,
             reason: it.reason || '',
             pop: (it.rating && it.rating.total) || 0,
             img: (it.images && (it.images.common || it.images.large)) || '',
@@ -678,12 +679,10 @@ window.__ModuleLoader__.load({
       };
 
       const toggleSalvage = () => {
-        setSalvage((v) => {
-          const next = !v;
-          try { localStorage.setItem('animebar.panel.salvage', next ? '1' : '0'); } catch (e) { /* 忽略 */ }
-          load(true);
-          return next;
-        });
+        const next = !salvage;
+        setSalvage(next);
+        try { localStorage.setItem('animebar.panel.salvage', next ? '1' : '0'); } catch (e) { /* 忽略 */ }
+        load(true);   // 重新拉一次，拿回带 signal 的数据
       };
 
       // 档案由 Mac 端生成并放进共享目录，这里只读
@@ -960,10 +959,15 @@ window.__ModuleLoader__.load({
           if (k && !(it.title + (it.orig || '')).toLowerCase().includes(k)) return false;
           return true;
         });
+        // 打捞模式的顺序由宿主算好（按信号分桶、全局序号），
+        // 这里既不能按热度/最新重排，也不能让「全部」视图按星期分组打乱它
+        if (salvage) {
+          return list.slice().sort((a, b) => (a.salvageOrder ?? 1e9) - (b.salvageOrder ?? 1e9));
+        }
         return list.sort((a, b) => (sortKey === 'date'
           ? (b.date || '').localeCompare(a.date || '')
           : (b.pop || 0) - (a.pop || 0)));
-      }, [source, tab, wd, kw, sortKey]);
+      }, [source, tab, wd, kw, sortKey, salvage]);
 
       const dismissHint = () => {
         if (!hint) return;

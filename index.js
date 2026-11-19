@@ -309,7 +309,11 @@ export function apply(ctx, config) {
 
           // 打捞：整体重排，每个条目带上 signal 与 reason
           const flat = result.calendar.flatMap((day) => day.items ?? []);
-          const ranked = sortSalvage(flat, flat.length);
+          // 打捞的意义是「把没被看见的捞出来」：主流共识作本来就在视线里，
+          // 默认剔除，否则某天没有冷门作时它们会顶到最前面（柯南、海贼王就是这样上来的）
+          const showConsensus = url.searchParams.get("consensus") === "1";
+          const pool = showConsensus ? flat : flat.filter((it) => classifySalvage(it).signal !== "consensus");
+          const ranked = sortSalvage(pool, pool.length);
           const byId = new Map(ranked.map((r, i) => [r.item.id, { ...r, order: i }]));
           const calendar = result.calendar.map((day) => ({
             ...day,
