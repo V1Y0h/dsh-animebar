@@ -1013,8 +1013,8 @@ window.__ModuleLoader__.load({
             tab === 'tv' ? chip(t('全部', 'All', '全て'), wd === 0, () => setWd(0), 'wd0') : null,
             tab === 'tv' ? DAYS.map((d, i) => chip(lang === 'en' ? DAYS_EN[i] : lang === 'ja' ? DAYS_JA[i] : d, wd === i + 1, () => setWd(i + 1), 'wd' + (i + 1))) : null,
             salvage
-              ? chip(t('打捞中', 'Salvage on', '救済中'), true, () => toggleSalvage(), 'sv')
-              : chip(t('打捞', 'Salvage', '救済'), false, () => toggleSalvage(), 'sv'),
+              ? chip(t('打捞中', 'Salvage on', '救済中') + '·2', true, () => toggleSalvage(), 'sv')
+              : chip(t('打捞', 'Salvage', '救済') + '·2', false, () => toggleSalvage(), 'sv'),
             salvage ? null : chip(t('按热度', 'Popular', '人気順'), sortKey === 'pop', () => setSortKey('pop'), 'k1'),
             salvage ? null : chip(t('按最新', 'Newest', '新着順'), sortKey === 'date', () => setSortKey('date'), 'k2'),
             h('input', {
