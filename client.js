@@ -694,7 +694,7 @@ window.__ModuleLoader__.load({
         switch (it.signal) {
           case 'polarized':
             return t(`均分 ${sc.toFixed(1)} · 评价撕裂 (σ=${sd.toFixed(2)}, ${v}人)`,
-                     `avg ${sc.toFixed(1)} · ratings split (σ=${sd.toFixed(2)}, ${v} votes)`,
+                     `avg ${sc.toFixed(1)} · polarizing (σ=${sd.toFixed(2)}, ${v} votes)`,
                      `平均 ${sc.toFixed(1)} · 評価が真っ二つ (σ=${sd.toFixed(2)}, ${v}人)`);
           case 'trainwreck':
             return t(`低分 ${sc.toFixed(1)} · ${v}人评分 / ${d}人在看`,

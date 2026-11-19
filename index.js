@@ -147,8 +147,8 @@ export function apply(ctx, config) {
         type: "string",
         enum: ["standard", "salvage"],
         description:
-          "standard ranks by score. salvage surfaces ignored or controversial titles: "
-          + "polarized (ratings split), trainwreck (high attention, low score), "
+          "standard ranks by score. salvage surfaces overlooked or divisive titles: "
+          + "polarized (audience split), trainwreck (high attention, low score), "
           + "blindspot (barely rated), lowprofile, overlooked. Each item carries signal and reason.",
       },
       hideConsensus: {
