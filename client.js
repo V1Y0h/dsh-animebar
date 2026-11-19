@@ -703,7 +703,7 @@ window.__ModuleLoader__.load({
           case 'blindspot':
             return v === 0
               ? t('暂无评分', 'no ratings yet', '評価なし')
-              : t(`仅 ${v} 人评分 · 视线盲区`, `only ${v} votes · off the radar`, `わずか ${v}人 · 圏外`);
+              : t(`仅 ${v} 人评分 · 视线盲区`, `only ${v} votes · barely rated`, `わずか ${v}人 · 圏外`);
           case 'lowprofile':
             return t(`低分 ${sc.toFixed(1)} · 关注度低 (${v}人)`,
                      `low ${sc.toFixed(1)} · little attention (${v})`,
